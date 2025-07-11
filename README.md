@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/molvqingtai/GhostChat/blob/master/public/logo.png" width="200px"/>
+  <img src="https://github.com/SapienXai/WebChat/blob/master/public/logo.png" width="200px"/>
 </p>
 
 # GhostChat

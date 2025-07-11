@@ -1,83 +1,128 @@
-<p align="center">
-  <img src="https://github.com/SapienXai/WebChat/blob/master/public/logo.png" width="200px"/>
-</p>
+# GhostChat 👻
 
-# GhostChat
+> **GhostChat** is a **decentralized, server‑less browser extension** that adds a secure chat layer to every dApp, token, or NFT site you visit.\
+> Originally forked from **WebChat**, GhostChat has been **redesigned and super‑charged by the **[**SapienX**](https://sapienx.app)** team** to meet the unique needs of Web3 communities.
 
-[![GitHub License](https://img.shields.io/github/license/molvqingtai/GhostChat)](https://github.com/molvqingtai/GhostChat/blob/master/LICENSE) [![Chrome Web Store Version](https://img.shields.io/chrome-web-store/v/cpaedhbidlpnbdfegakhiamfpndhjpgf)](https://chromewebstore.google.com/detail/webchat/cpaedhbidlpnbdfegakhiamfpndhjpgf) [![GitHub Release](https://img.shields.io/github/v/release/molvqingtai/GhostChat)](https://github.com/molvqingtai/GhostChat/releases)
+---
 
-> Chat with anyone on any website using GhostChat
+## ✨ Why GhostChat?
 
-This is an anonymous chat browser extension that is decentralized and serverless, utilizing WebRTC for end-to-end encrypted communication. It prioritizes privacy, with all data stored locally.
+| Benefit                       | What it means for you                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Instant site reviews**      | See real‑time feedback from other users before you connect a wallet or sign a transaction.      |
+| **Always‑on AI companion**    | Ask questions, get summaries, or request contract safety hints even when no one else is online. |
+| **Like‑minded conversations** | Find fellow traders, collectors, and builders right on the page you’re viewing.                 |
+| **Built‑in safety checks**    | GhostChat flags risky contracts, wallet drainers, and fake NFT collections in real time.        |
+| **True decentralization**     | Powered by WebRTC + local storage, so your messages never touch a centralized server.           |
 
-The aim is to add chat room functionality to any website, you'll never feel alone again.
+---
 
-### Install
+## 🚀 Quick Start (User)
 
-**Install from Store**
+1. **Install from a store**
 
-- [Chrome Web Store](https://chromewebstore.google.com/detail/ghostchat/cpaedhbidlpnbdfegakhiamfpndhjpgf)
-- [Edge Web Store](https://microsoftedge.microsoft.com/addons/detail/mmfdplbomjjlgdffecapcpgjmhfhmiob)
-- [Firefox Addons](https://addons.mozilla.org/firefox/addon/ghostchat/)
+   | Browser              | Link                                                                                                                                         |
+   | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Chrome (recommended) | [https://chromewebstore.google.com/detail/ghostchat/XXXXXXXX](https://chromewebstore.google.com/detail/ghostchat/XXXXXXXX)                   |
+   | Edge                 | [https://microsoftedge.microsoft.com/addons/detail/ghostchat/YYYYYYYY](https://microsoftedge.microsoft.com/addons/detail/ghostchat/YYYYYYYY) |
+   | Firefox              | [https://addons.mozilla.org/firefox/addon/ghostchat/](https://addons.mozilla.org/firefox/addon/ghostchat/)                                   |
 
-**Manual Installation**
+2. Refresh the page you’re on.
 
-1. Go to the GitHub repository ([Releases](https://github.com/molvqingtai/GhostChat/releases))
-2. Click on the "Assets" button and select "web-chat-\*.zip"
-3. Extract the ZIP file to a folder on your computer
-4. Open the extension management page in your browser (usually chrome://extensions/)
-   - Enable "Developer mode"
-   - Click "Load unpacked" and select the folder you just extracted
+3. Click the little ghost floating in the bottom‑right corner 👻.
 
-### Usage
+4. Say hello — you’re chatting on‑chain!
 
-### Local Development
+> **Tip:** The AI companion lives in the `` tab of every chat room. Ask it anything from “Is this contract verified?” to “What’s an NFT royalty?” for instant answers.
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/molvqingtai/GhostChat.git
-   ```
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-3. **Run the development server**
-   ```bash
-   pnpm dev
-   ```
-4. **Load the extension in your browser**
-   - Open the extension management page in your browser (usually `chrome://extensions/`)
-   - Enable "Developer mode"
-   - Click "Load unpacked" and select the `.output/chrome-mv3-dev` folder.
+---
 
+## 🛠️ Local Development
 
-After installing the extension, you'll see a ghost icon in the bottom-right corner of any website. Click it, and you'll be able to chat happily with others on the same site!
+```bash
+git clone https://github.com/SapienXai/GhostChat.git
+cd GhostChat
+pnpm install          # or npm / yarn
+pnpm dev              # builds + watches
+```
 
-### Video
+1. Open your browser’s extension page (`chrome://extensions`, `edge://extensions`, or `about:debugging#/runtime/this-firefox`).
+2. Enable **Developer Mode** → **Load unpacked** → select `.output/chrome-mv3-dev`.
+3. Visit any site and start hacking!
 
-https://github.com/user-attachments/assets/e7ac9b8e-1b6c-43fb-8469-7a0a2c09d450
+### Tech stack highlights
 
-### Standing on the Shoulders of Giants
+- **Vue + TypeScript** UI running inside a Manifest V3 extension
+- **Artico WebRTC** mesh for peer‑to‑peer, server‑less messaging
+- **Remesh** for domain‑driven state management
+- **shadcn/ui** + Tailwind CSS for drop‑in, theme‑able components
+- **OpenAI function calls** for the embedded AI companion
+- **Vite**‑powered DX with hot‑module reloading
 
-In addition to the good idea of decentralized chat, it also leverages some fantastic technologies.
+---
 
-- **[remesh](https://github.com/remesh-js/remesh)**: A framework in JavaScript that implements DDD principles, achieving true separation of UI and logic, allowing for easy implementation of the UI part, such as rewriting it in Vue, due to its independence from the UI.
+## 📡 Architecture
 
-- **[shadcn/ui](https://ui.shadcn.com/)**: A beautiful UI library and a pioneer of the no-install concept, offering unmatched convenience in customizing styles.
+```mermaid
+graph TD
+    A[Website] -->|Injects| B(GhostChat Widget)
+    B --> C[UI Layer (Vue)]
+    C --> D[Remesh State Core]
+    D --> E[Artico WebRTC]
+    D --> F[AI Companion]
+    subgraph Peer-to-Peer Network
+        E
+    end
+    F -->|Safety & Insights| C
+```
 
-- **[wxt](https://wxt.dev/)**: This is the best framework I’ve used for building browser extensions, bar none.
+- **No centralized servers**: All chat data travels directly between peers via WebRTC.
+- **Local‑first storage**: Conversation history stays on your device unless you export it.
+- **Pluggable AI**: Swap the default OpenAI agent for your own LLM endpoint.
 
-- ~~**[trystero](https://github.com/dmotz/trystero)**: The core dependency for implementing decentralized communication, enabling connections to decentralized networks like IPFS, torrent, Nostr, etc.~~
-- **[Artico](https://github.com/matallui/artico)**: A flexible set of libraries that help you create your own WebRTC-based solutions
+---
 
-- **[ugly-avatar](https://github.com/txstc55/ugly-avatar)**: Use it to create stunning random avatars.
+## 🗺️ Roadmap
 
-### Sponsors
+| Status | Feature                                                    |
+| ------ | ---------------------------------------------------------- |
+| ✅      | Fork WebChat → integrate SapienX brand & UI                |
+| ✅      | Embed OpenAI GPT‑4o companion                              |
+| ⏳      | Lens Protocol profile linking                              |
+| ⏳      | ENS / .bit name resolution in chat                         |
+| ⏳      | Mobile Safari support (Manifest V3 polyfill)               |
+| ⏳      | Multi‑chain phishing blacklist (powered by Chainlink CCIP) |
 
-GhostChat is a open source project with its ongoing development made possible entirely by the support of these awesome backers. 
+> Want something else? [Open an issue](https://github.com/SapienXai/GhostChat/issues/new/choose) or up‑vote an existing one.
 
-[![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")
+---
 
-### License
+## 🤝 Contributing
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/molvqingtai/GhostChat/blob/master/LICENSE) file for details
+1. Fork the repo & create your branch: `git checkout -b feature/amazing-idea`
+2. Commit your changes: `git commit -m "feat: amazing idea 🚀"`
+3. Push to the branch: `git push origin feature/amazing-idea`
+4. Open a pull request. We review daily!
+
+Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+
+---
+
+## 🙏 Acknowledgements
+
+GhostChat stands on the shoulders of the awesome **WebChat** project and dozens of open‑source libraries.
+
+Special thanks to:
+
+- The **WebChat** community for blazing the trail
+- **Artico** and **Remesh** authors for battle‑tested P2P & state solutions
+- **SapienX** designers for the neon‑ghost vibes ([https://sapienx.app/](https://sapienx.app/))
+
+---
+
+## 📜 License
+
+GhostChat is released under the [MIT License](LICENSE). Commercial use is welcome — just give us a ★ and drop a link back!
+
+---
+

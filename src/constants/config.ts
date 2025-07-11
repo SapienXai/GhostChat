@@ -186,13 +186,13 @@ export const BREAKPOINTS = {
 
 export const MESSAGE_MAX_LENGTH = 500 as const
 
-export const STORAGE_NAME = `WEB_CHAT_${version}` as const
+export const STORAGE_NAME = `GHOST_CHAT_${version}` as const
 
-export const USER_INFO_STORAGE_KEY = 'WEB_CHAT_USER_INFO' as const
+export const USER_INFO_STORAGE_KEY = 'GHOST_CHAT_USER_INFO' as const
 
-export const MESSAGE_LIST_STORAGE_KEY = 'WEB_CHAT_MESSAGE_LIST' as const
+export const MESSAGE_LIST_STORAGE_KEY = 'GHOST_CHAT_MESSAGE_LIST' as const
 
-export const APP_STATUS_STORAGE_KEY = 'WEB_CHAT_APP_STATUS' as const
+export const APP_STATUS_STORAGE_KEY = 'GHOST_CHAT_APP_STATUS' as const
 /**
  * In chrome storage.sync, each key-value pair supports a maximum storage of 8kb
  * Image is encoded as base64, and the size is increased by about 33%.
@@ -208,4 +208,4 @@ export const SYNC_HISTORY_MAX_DAYS = 90 as const
  */
 export const WEB_RTC_MAX_MESSAGE_SIZE = 262144 as const
 
-export const VIRTUAL_ROOM_ID = 'WEB_CHAT_VIRTUAL_ROOM' as const
+export const VIRTUAL_ROOM_ID = 'GHOST_CHAT_VIRTUAL_ROOM' as const

@@ -6,6 +6,7 @@ export interface LinkProps {
   className?: string
   children: ReactNode
   underline?: boolean
+  target?: string
 }
 
 const Link = ({
@@ -13,12 +14,13 @@ const Link = ({
   href,
   className,
   children,
-  underline = true
+  underline = true,
+  target
 }: LinkProps & { ref?: Ref<HTMLAnchorElement | null> }) => {
   return (
     <a
       href={href}
-      target={href}
+      target={target}
       rel="noopener noreferrer"
       className={cn(underline && 'hover:underline', className)}
       ref={ref}

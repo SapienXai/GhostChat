@@ -1,8 +1,8 @@
 {
-  "name": "web-chat",
-  "displayName": "WebChat",
+  "name": "ghost-chat",
+  "displayName": "GhostChat",
   "version": "1.8.5",
-  "description": "Chat with anyone on any website.",
+  "description": "Chat with anyone on any website using GhostChat.",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -21,10 +21,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/molvqingtai/WebChat.git"
+    "url": "git+https://github.com/molvqingtai/GhostChat.git"
   },
   "keywords": [
-    "WebChat",
+    "GhostChat",
     "Chat",
     "Browser",
     "Browser Extension",
@@ -40,9 +40,9 @@
   "author": "molvqingtai",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/molvqingtai/WebChat/issues"
+    "url": "https://github.com/molvqingtai/GhostChat/issues"
   },
-  "homepage": "https://github.com/molvqingtai/WebChat",
+  "homepage": "https://github.com/molvqingtai/GhostChat",
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
     "@number-flow/react": "^0.5.9",

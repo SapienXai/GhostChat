@@ -13,6 +13,7 @@ import { Virtuoso } from 'react-virtuoso'
 import { AvatarCircles } from '@/components/magicui/avatar-circles'
 import Link from '@/components/link'
 import NumberFlow from '@number-flow/react'
+import SocialLinks from './social-links'
 
 const Header: FC = () => {
   const siteInfo = getSiteInfo()
@@ -42,81 +43,84 @@ const Header: FC = () => {
   )
 
   return (
-    <div className="z-10 grid h-12 grid-flow-col grid-cols-[theme('spacing.20')_auto_theme('spacing.20')] items-center justify-between rounded-t-xl bg-white px-4 backdrop-blur-lg dark:bg-slate-950">
+    <div className="z-10 grid h-16 grid-flow-col grid-cols-[auto_1fr_auto] items-center justify-between rounded-t-xl bg-white px-4 backdrop-blur-lg dark:bg-slate-950">
       <Avatar className="size-8 rounded-sm">
         <AvatarImage src={siteInfo.icon} alt="favicon" />
         <AvatarFallback>
           <Globe2Icon size="100%" className="text-gray-400" />
         </AvatarFallback>
       </Avatar>
-      <HoverCard>
-        <HoverCardTrigger asChild>
-          <Button className="overflow-hidden rounded-md p-2" variant="link">
-            <span className="truncate text-lg font-semibold text-slate-600 dark:text-slate-50">
-              {siteInfo.hostname.replace(/^www\./i, '')}
-            </span>
-          </Button>
-        </HoverCardTrigger>
-        <HoverCardContent className="w-80 rounded-lg p-0">
-          <ScrollArea type="scroll" className="max-h-96 min-h-[72px] p-2" ref={setVirtualOnlineGroupScrollParentRef}>
-            <Virtuoso
-              data={virtualOnlineGroup}
-              defaultItemHeight={56}
-              customScrollParent={virtualOnlineGroupScrollParentRef!}
-              itemContent={(_index, site) => (
-                <Link
-                  underline={false}
-                  href={site.origin}
-                  className="grid cursor-pointer grid-cols-[auto_1fr] items-center gap-x-2 rounded-lg px-2 py-1.5 hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Avatar className="size-10 rounded-sm">
-                    <AvatarImage src={site.icon} alt="favicon" />
-                    <AvatarFallback>
-                      <Globe2Icon size="100%" className="text-gray-400" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid items-center">
-                    <div className="flex items-center gap-x-1 overflow-hidden">
-                      <h4 className="flex-1 truncate text-sm font-semibold text-slate-600 dark:text-slate-50">
-                        {site.hostname.replace(/^www\./i, '')}
-                      </h4>
-                      <div className="shrink-0 text-sm">
-                        <div className="flex items-center gap-x-1 text-nowrap text-xs text-slate-500 dark:text-slate-100">
-                          <div className="flex items-center gap-x-1 pt-px">
-                            <span className="relative flex size-2">
-                              <span
-                                className={cn(
-                                  'absolute inline-flex size-full animate-ping rounded-full opacity-75',
-                                  site.users.length > 1 ? 'bg-green-400' : 'bg-orange-400'
-                                )}
-                              ></span>
-                              <span
-                                className={cn(
-                                  'relative inline-flex size-full rounded-full',
-                                  site.users.length > 1 ? 'bg-green-500' : 'bg-orange-500'
-                                )}
-                              ></span>
-                            </span>
-                            <span className="flex items-center leading-none ">
-                              <span className="py-[0.25em]">ONLINE</span>
-                            </span>
+      <div className="grid justify-center">
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Button className="overflow-hidden rounded-md p-1 -mb-0" variant="link">
+              <span className="truncate text-base font-semibold text-slate-600 dark:text-slate-50">
+                {siteInfo.hostname.replace(/^www\./i, '')}
+              </span>
+            </Button>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80 rounded-lg p-0">
+            <ScrollArea type="scroll" className="max-h-96 min-h-[72px] p-2" ref={setVirtualOnlineGroupScrollParentRef}>
+              <Virtuoso
+                data={virtualOnlineGroup}
+                defaultItemHeight={56}
+                customScrollParent={virtualOnlineGroupScrollParentRef!}
+                itemContent={(_index, site) => (
+                  <Link
+                    underline={false}
+                    href={site.origin}
+                    className="grid cursor-pointer grid-cols-[auto_1fr] items-center gap-x-2 rounded-lg px-2 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Avatar className="size-10 rounded-sm">
+                      <AvatarImage src={site.icon} alt="favicon" />
+                      <AvatarFallback>
+                        <Globe2Icon size="100%" className="text-gray-400" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid items-center">
+                      <div className="flex items-center gap-x-1 overflow-hidden">
+                        <h4 className="flex-1 truncate text-sm font-semibold text-slate-600 dark:text-slate-50">
+                          {site.hostname.replace(/^www\./i, '')}
+                        </h4>
+                        <div className="shrink-0 text-sm">
+                          <div className="flex items-center gap-x-1 text-nowrap text-xs text-slate-500 dark:text-slate-100">
+                            <div className="flex items-center gap-x-1 pt-px">
+                              <span className="relative flex size-2">
+                                <span
+                                  className={cn(
+                                    'absolute inline-flex size-full animate-ping rounded-full opacity-75',
+                                    site.users.length > 1 ? 'bg-green-400' : 'bg-orange-400'
+                                  )}
+                                ></span>
+                                <span
+                                  className={cn(
+                                    'relative inline-flex size-full rounded-full',
+                                    site.users.length > 1 ? 'bg-green-500' : 'bg-orange-500'
+                                  )}
+                                ></span>
+                              </span>
+                              <span className="flex items-center leading-none ">
+                                <span className="py-[0.25em]">ONLINE</span>
+                              </span>
+                            </div>
+                            {import.meta.env.FIREFOX ? (
+                              <span className="tabular-nums">{site.users.length}</span>
+                            ) : (
+                              <NumberFlow className="tabular-nums" willChange value={site.users.length} />
+                            )}
                           </div>
-                          {import.meta.env.FIREFOX ? (
-                            <span className="tabular-nums">{site.users.length}</span>
-                          ) : (
-                            <NumberFlow className="tabular-nums" willChange value={site.users.length} />
-                          )}
                         </div>
                       </div>
+                      <AvatarCircles maxLength={9} size="xs" avatarUrls={site.users.map((user) => user.userAvatar)} />
                     </div>
-                    <AvatarCircles maxLength={9} size="xs" avatarUrls={site.users.map((user) => user.userAvatar)} />
-                  </div>
-                </Link>
-              )}
-            ></Virtuoso>
-          </ScrollArea>
-        </HoverCardContent>
-      </HoverCard>
+                  </Link>
+                )}
+              ></Virtuoso>
+            </ScrollArea>
+          </HoverCardContent>
+        </HoverCard>
+        <SocialLinks siteInfo={siteInfo} />
+      </div>
       <HoverCard>
         <HoverCardTrigger asChild>
           <Button className=" rounded-md p-0  hover:no-underline" variant="link">

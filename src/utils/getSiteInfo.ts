@@ -8,6 +8,9 @@ export interface SiteInfo {
   title: string
   icon: string
   description: string
+  twitter?: string
+  telegram?: string
+  discord?: string
 }
 
 const getIcon = (): string => {
@@ -25,6 +28,10 @@ const getIcon = (): string => {
   }
 }
 
+const getSocialLink = (selector: string): string | undefined => {
+  return document.querySelector<HTMLAnchorElement>(selector)?.href
+}
+
 const getSiteInfo = (): SiteInfo => {
   return {
     host: document.location.host,
@@ -39,7 +46,10 @@ const getSiteInfo = (): SiteInfo => {
     description:
       document.querySelector('meta[property="og:description i"]')?.getAttribute('content') ??
       document.querySelector('meta[name="description" i]')?.getAttribute('content') ??
-      ''
+      '',
+    twitter: getSocialLink('a[href*="twitter.com"]'),
+    telegram: getSocialLink('a[href*="t.me"]'),
+    discord: getSocialLink('a[href*="discord.gg"]')
   }
 }
 

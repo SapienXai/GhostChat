@@ -7,7 +7,7 @@ const BadgeList: FC = () => {
   return (
     <div className="fixed inset-x-1 bottom-4 mx-auto flex w-fit">
       <Button asChild size="lg" variant="ghost" className="rounded-full px-3 text-xl font-semibold text-primary">
-        <Link href="https://github.com/molvqingtai/WebChat">
+        <Link href="https://github.com/SapienXai/GhostChat">
           <GitHubLogoIcon className="mr-1 size-6"></GitHubLogoIcon>
           Github
         </Link>

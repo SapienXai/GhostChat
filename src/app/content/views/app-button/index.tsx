@@ -1,4 +1,4 @@
-import { type FC, useState, type MouseEvent, useEffect, startTransition } from 'react'
+import { type FC, useState, type MouseEvent, useEffect } from 'react'
 import { SettingsIcon, MoonIcon, SunIcon, HandIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -8,15 +8,9 @@ import { EVENT } from '@/constants/event'
 import UserInfoDomain from '@/domain/UserInfo'
 import useTriggerAway from '@/hooks/useTriggerAway'
 import { checkDarkMode, cn } from '@/utils'
-import LogoIcon0 from '@/assets/images/logo-0.svg'
-import LogoIcon1 from '@/assets/images/logo-1.svg'
-import LogoIcon2 from '@/assets/images/logo-2.svg'
-import LogoIcon3 from '@/assets/images/logo-3.svg'
-import LogoIcon4 from '@/assets/images/logo-4.svg'
-import LogoIcon5 from '@/assets/images/logo-5.svg'
-import LogoIcon6 from '@/assets/images/logo-6.svg'
+import LogoW from '@/assets/images/logoW.png'
+import LogoB from '@/assets/images/logoB.png'
 import AppStatusDomain from '@/domain/AppStatus'
-import { getDay } from 'date-fns'
 import { messenger } from '@/messenger'
 import useDraggable from '@/hooks/useDraggable'
 import useWindowResize from '@/hooks/useWindowResize'
@@ -33,8 +27,6 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
   const userInfoDomain = useRemeshDomain(UserInfoDomain())
   const userInfo = useRemeshQuery(userInfoDomain.query.UserInfoQuery())
   const appPosition = useRemeshQuery(appStatusDomain.query.PositionQuery())
-
-  const DayLogo = [LogoIcon0, LogoIcon1, LogoIcon2, LogoIcon3, LogoIcon4, LogoIcon5, LogoIcon6][getDay(Date())]
 
   const isDarkMode = userInfo?.themeMode === 'dark' ? true : userInfo?.themeMode === 'light' ? false : checkDarkMode()
 
@@ -140,7 +132,7 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
       <Button
         onClick={handleToggleApp}
         onContextMenu={handleToggleMenu}
-        className="relative z-20 size-11 rounded-full has-[>svg]:p-0 text-xs shadow-lg shadow-slate-500/50 after:absolute after:-inset-0.5 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),theme(colors.slate.500)_0%,theme(colors.white)_10%,theme(colors.slate.500)_20%)]"
+        className="relative z-20 size-11 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-hidden after:absolute after:-inset-0.5 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),theme(colors.slate.500)_0%,theme(colors.white)_10%,theme(colors.slate.500)_20%)]"
       >
         <AnimatePresence>
           {hasUnreadQuery && (
@@ -159,7 +151,9 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
           )}
         </AnimatePresence>
 
-        <DayLogo className="relative z-20 max-h-full max-w-full overflow-hidden size-full"></DayLogo>
+        <div className="relative z-15 h-full w-full rounded-full p-0.5">
+          <img src={isDarkMode ? LogoB : LogoW} className="h-full w-full rounded-full object-cover" />
+        </div>
       </Button>
     </div>
   )

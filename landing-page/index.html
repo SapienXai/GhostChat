@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostChat - Your Friendly Ghost for Web3 Conversations</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a; /* Dark background */
+            color: #e0e0e0; /* Light text */
+            overflow-x: hidden; /* Prevent horizontal scroll from animations */
+        }
+        h1, h2, h3 {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .hero-section {
+            background: radial-gradient(circle at top left, rgba(40, 0, 80, 0.4) 0%, transparent 50%),
+                        radial-gradient(circle at bottom right, rgba(0, 60, 60, 0.4) 0%, transparent 50%),
+                        #0a0a0a;
+            position: relative;
+            overflow: hidden; /* Ensure video doesn't overflow */
+        }
+        .video-background {
+            position: absolute;
+            inset: 0; /* Top, right, bottom, left to 0 */
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none; /* Allow clicks to pass through to elements behind */
+            overflow: hidden; /* Hide any overflow from the video itself */
+        }
+        .video-background iframe {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Cover the area while maintaining aspect ratio */
+            transform: scale(1.05); /* Slightly zoom in to ensure no black bars */
+        }
+        .floating-element {
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+            opacity: 0.2;
+            filter: blur(2px);
+        }
+        .floating-ghost {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(100, 255, 255, 0.1);
+            border-radius: 50%;
+            animation-delay: 0s;
+        }
+        .floating-bubble {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 100, 255, 0.1);
+            border-radius: 50%;
+            animation-delay: 2s;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+            25% { transform: translateY(-20px) translateX(10px) rotate(5deg); }
+            50% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+            75% { transform: translateY(20px) translateX(-10px) rotate(-5deg); }
+            100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+        }
+        .btn-primary {
+            background-color: #6a11cb;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #2575fc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(106, 17, 203, 0.4);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            border: 2px solid #6a11cb;
+            color: #6a11cb;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background-color: #6a11cb;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(106, 17, 203, 0.4);
+        }
+        .section-gradient {
+            background: linear-gradient(to bottom, #0a0a0a, #1a1a1a);
+        }
+        .feature-card {
+            background-color: #1a1a1a;
+            border: 1px solid rgba(106, 17, 203, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(106, 17, 203, 0.2);
+        }
+        .glow-text {
+            text-shadow: 0 0 8px rgba(106, 17, 203, 0.6);
+        }
+        .web3-icon {
+            filter: drop-shadow(0 0 5px rgba(0, 255, 255, 0.5));
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <section class="hero-section relative min-h-screen flex items-center justify-center text-center py-20 px-4">
+        <!-- Video Background -->
+        <div class="video-background">
+            <iframe
+                src="https://www.youtube.com/embed/B9ixzkJx-IM?autoplay=1&mute=1&loop=1&playlist=B9ixzkJx-IM&controls=0&showinfo=0&modestbranding=1&fs=0&iv_load_policy=3&disablekb=1"
+                frameborder="0"
+                allow="autoplay; encrypted-media"
+                allowfullscreen
+            ></iframe>
+        </div>
+
+        <!-- Floating Elements -->
+        <div class="floating-element floating-ghost top-1/4 left-1/4"></div>
+        <div class="floating-element floating-bubble bottom-1/3 right-1/4"></div>
+        <div class="floating-element floating-ghost top-1/2 left-1/2" style="animation-delay: 4s; transform: scale(0.7);"></div>
+        <div class="floating-element floating-bubble bottom-1/4 left-1/3" style="animation-delay: 6s; transform: scale(0.8);"></div>
+
+        <div class="relative z-10 max-w-4xl mx-auto bg-black bg-opacity-50 p-8 rounded-lg">
+            <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight glow-text">Your Friendly Ghost for Web3 Conversations</h1>
+            <p class="text-lg md:text-xl mb-10 max-w-2xl mx-auto opacity-80">Chat, verify, and connect directly on any Web3 site — with AI and real-time feedback.</p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
+                <a href="#" class="btn-primary px-8 py-4 rounded-full text-lg font-semibold shadow-lg">Download for iOS</a>
+                <a href="#" class="btn-primary px-8 py-4 rounded-full text-lg font-semibold shadow-lg">Download for Android</a>
+                <a href="#" class="btn-secondary px-8 py-4 rounded-full text-lg font-semibold shadow-lg">Try Web App</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Features Section -->
+    <section class="section-gradient py-20 px-4">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 glow-text">Key Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                <div class="feature-card p-8 rounded-xl shadow-lg text-center">
+                    <div class="text-5xl mb-4 web3-icon">🤖</div>
+                    <h3 class="text-2xl font-semibold mb-3">AI Chat Assistant</h3>
+                    <p class="text-gray-400">Get instant answers and insights powered by advanced AI, right within your chat.</p>
+                </div>
+                <div class="feature-card p-8 rounded-xl shadow-lg text-center">
+                    <div class="text-5xl mb-4 web3-icon">📊</div>
+                    <h3 class="text-2xl font-semibold mb-3">Real-time Site Feedback</h3>
+                    <p class="text-gray-400">See community ratings and feedback for any dApp, token, or NFT site you visit.</p>
+                </div>
+                <div class="feature-card p-8 rounded-xl shadow-lg text-center">
+                    <div class="text-5xl mb-4 web3-icon">🗣️</div>
+                    <h3 class="text-2xl font-semibold mb-3">Community Chat</h3>
+                    <p class="text-gray-400">Connect and chat with other users directly on the Web3 sites you're exploring.</p>
+                </div>
+                <div class="feature-card p-8 rounded-xl shadow-lg text-center">
+                    <div class="text-5xl mb-4 web3-icon">🚨</div>
+                    <h3 class="text-2xl font-semibold mb-3">Scam & Rug Pull Warnings</h3>
+                    <p class="text-gray-400">Receive proactive safety alerts for potential scams and malicious activities.</p>
+                </div>
+                <div class="feature-card p-8 rounded-xl shadow-lg text-center">
+                    <div class="text-5xl mb-4 web3-icon">👤</div>
+                    <h3 class="text-2xl font-semibold mb-3">Web3 Profile & Anonymous Mode</h3>
+                    <p class="text-gray-400">Link your Web3 identity or chat completely anonymously – your choice.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="py-20 px-4 bg-gray-900">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 glow-text">How It Works</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
+                <div class="text-center">
+                    <div class="text-6xl mb-6 web3-icon">🌐</div>
+                    <h3 class="text-2xl font-semibold mb-3">1. Visit Any Web3 Site</h3>
+                    <p class="text-gray-400">Navigate to your favorite dApp, token page, or NFT marketplace.</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-6xl mb-6 web3-icon">💬</div>
+                    <h3 class="text-2xl font-semibold mb-3">2. Chat Opens Automatically</h3>
+                    <p class="text-gray-400">GhostChat instantly appears, ready for you to join the conversation.</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-6xl mb-6 web3-icon">💡</div>
+                    <h3 class="text-2xl font-semibold mb-3">3. Get Insights & Connect</h3>
+                    <p class="text-gray-400">Access AI insights, community reviews, and chat with other users in real-time.</p>
+                </div>
+            </div>
+            <!-- Placeholder for visual flow -->
+            <div class="mt-20 text-center text-gray-600 text-lg">
+                <p><em>[Placeholder: Add animated visual flow or screenshots here]</em></p>
+                <img src="https://via.placeholder.com/1200x600?text=How+It+Works+Visual" alt="How It Works Visual" class="mx-auto mt-8 rounded-lg shadow-xl">
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust & Safety Section -->
+    <section class="section-gradient py-20 px-4">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 glow-text">Trust & Safety</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h3 class="text-3xl font-semibold mb-6">AI + Community = Real-time Scam Detection</h3>
+                    <p class="text-gray-400 mb-6">GhostChat combines the power of artificial intelligence with real-time community feedback to identify and warn you about potential scams, rug pulls, and malicious sites before you engage.</p>
+                    <ul class="list-disc list-inside text-gray-400 space-y-3">
+                        <li>Proactive alerts for suspicious contracts and addresses.</li>
+                        <li>Community-driven flagging of untrustworthy projects.</li>
+                        <li>Transparent user ratings for tokens and NFTs.</li>
+                    </ul>
+                </div>
+                <div>
+                    <img src="https://via.placeholder.com/600x400?text=Scam+Detection+Example" alt="Scam Detection Example" class="rounded-lg shadow-xl">
+                    <p class="text-center text-gray-500 mt-4"><em>[Placeholder: Example of a flagged site or user rating interface]</em></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots / Demo Video Section -->
+    <section class="py-20 px-4 bg-gray-900">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 glow-text">See GhostChat in Action</h2>
+            <div class="max-w-4xl mx-auto">
+                <div class="aspect-w-16 aspect-h-9 bg-gray-800 rounded-lg overflow-hidden shadow-xl">
+                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                <p class="text-center text-gray-500 mt-4"><em>[Placeholder: Replace with your actual demo video or a carousel of screenshots]</em></p>
+                <img src="https://via.placeholder.com/1200x600?text=Chat+Interface+Screenshot" alt="Chat Interface Screenshot" class="mx-auto mt-8 rounded-lg shadow-xl">
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials / Reviews Section -->
+    <section class="section-gradient py-20 px-4">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 glow-text">What Our Users Say</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                <div class="p-8 rounded-xl shadow-lg feature-card">
+                    <p class="text-gray-300 italic mb-4">"GhostChat has transformed how I interact with dApps. The real-time feedback is a game-changer for staying safe in Web3."</p>
+                    <p class="font-semibold text-white">- Crypto Enthusiast</p>
+                </div>
+                <div class="p-8 rounded-xl shadow-lg feature-card">
+                    <p class="text-gray-300 italic mb-4">"Finally, a messaging app that understands Web3. The anonymous mode is perfect for exploring new projects."</p>
+                    <p class="font-semibold text-white">- NFT Collector</p>
+                </div>
+                <div class="p-8 rounded-xl shadow-lg feature-card">
+                    <p class="text-gray-300 italic mb-4">"The AI assistant is surprisingly helpful, and the community chat makes every site feel alive. Highly recommend!"</p>
+                    <p class="font-semibold text-white">- Blockchain Developer</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action (CTA) -->
+    <section class="bg-purple-900 text-white text-center py-20 px-4 rounded-lg mx-auto max-w-6xl my-20 shadow-2xl">
+        <h2 class="text-5xl font-bold mb-6 glow-text">Join the Ghost Revolution</h2>
+        <p class="text-xl mb-10 opacity-80">Experience Web3 conversations like never before. Secure, anonymous, and intelligent.</p>
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
+            <a href="#" class="btn-primary px-10 py-5 rounded-full text-xl font-semibold shadow-lg">Download Now</a>
+            <a href="#" class="btn-secondary px-10 py-5 rounded-full text-xl font-semibold shadow-lg">Explore Web Version</a>
+            <a href="#" class="btn-primary px-10 py-5 rounded-full text-xl font-semibold shadow-lg">Join Our Discord</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-500 text-center py-8 px-4">
+        <p>&copy; 2025 GhostChat. All rights reserved.</p>
+        <p class="text-sm mt-2">Privacy Policy | Terms of Service</p>
+    </footer>
+
+</body>
+</html>

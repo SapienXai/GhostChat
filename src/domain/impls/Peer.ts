@@ -9,7 +9,7 @@ export default class Peer extends Artico {
   private static instance: Peer | null = null
   private constructor(config: Config = {}) {
     const { peerId = nanoid() } = config
-    super({ id: peerId })
+    super({ id: peerId, debug: 3 })
   }
 
   public static createInstance(config: Config = {}) {

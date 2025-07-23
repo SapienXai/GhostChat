@@ -1,8 +1,8 @@
 {
   "name": "ghost-chat",
   "displayName": "GhostChat",
-  "version": "1.8.5",
-  "description": "Chat with anyone on any website using GhostChat.",
+  "version": "0.5.1",
+  "description": "GhostChat - Decentralized Web3 chat extension with AI companion for secure on-site conversations and DeFi safety checks.",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -21,28 +21,31 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/molvqingtai/GhostChat.git"
+    "url": "git+https://github.com/SapienXai/GhostChat.git"
   },
   "keywords": [
     "GhostChat",
-    "Chat",
-    "Browser",
+    "Web3",
+    "DeFi",
+    "Crypto",
+    "Blockchain",
+    "AI Companion",
+    "Security",
+    "Decentralized Chat",
     "Browser Extension",
-    "Chrome",
     "Chrome Extension",
-    "Firefox",
     "Firefox Extension",
-    "Extension",
     "WebRTC",
     "P2P",
-    "Peer to Peer"
+    "SapienX",
+    "Smart Contract Safety"
   ],
-  "author": "molvqingtai",
+  "author": "SapienX Team",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/molvqingtai/GhostChat/issues"
+    "url": "https://github.com/SapienXai/GhostChat/issues"
   },
-  "homepage": "https://github.com/molvqingtai/GhostChat",
+  "homepage": "https://github.com/SapienXai/GhostChat",
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
     "@number-flow/react": "^0.5.9",

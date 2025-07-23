@@ -21,6 +21,7 @@ const Header: FC = () => {
   const virtualRoomDomain = useRemeshDomain(VirtualRoomDomain())
   const chatUserList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
   const virtualUserList = useRemeshQuery(virtualRoomDomain.query.UserListQuery())
+  const awayUsers = useRemeshQuery(chatRoomDomain.query.AwayUsersQuery())
   const chatOnlineCount = chatUserList.length
 
   const virtualOnlineGroup = virtualUserList
@@ -161,15 +162,31 @@ const Header: FC = () => {
               data={chatUserList}
               defaultItemHeight={28}
               customScrollParent={chatUserListScrollParentRef!}
-              itemContent={(_index, user) => (
-                <div className={cn('flex  items-center gap-x-2 rounded-md px-2 py-1.5 outline-none')}>
-                  <Avatar className="size-4 shrink-0">
-                    <AvatarImage className="size-full" src={user.userAvatar} alt="avatar" />
-                    <AvatarFallback>{user.username.at(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 truncate text-xs text-slate-500 dark:text-slate-50">{user.username}</div>
-                </div>
-              )}
+              itemContent={(_index, user) => {
+                const isAway = awayUsers.some((awayUser) => awayUser.userId === user.userId)
+                return (
+                  <div className={cn('flex  items-center gap-x-2 rounded-md px-2 py-1.5 outline-none')}>
+                    <div className="relative">
+                      <Avatar className="size-4 shrink-0">
+                        <AvatarImage className="size-full" src={user.userAvatar} alt="avatar" />
+                        <AvatarFallback>{user.username.at(0)}</AvatarFallback>
+                      </Avatar>
+                      {isAway && (
+                        <div className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-white bg-gray-400 dark:border-slate-900" />
+                      )}
+                    </div>
+                    <div
+                      className={cn(
+                        'flex-1 truncate text-xs',
+                        isAway ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-50'
+                      )}
+                    >
+                      {user.username}
+                      {isAway && <span className="ml-1 text-xs">(Away)</span>}
+                    </div>
+                  </div>
+                )
+              }}
             ></Virtuoso>
           </ScrollArea>
         </HoverCardContent>

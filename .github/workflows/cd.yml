@@ -41,4 +41,4 @@ jobs:
       - run: pnpm wxt prepare
       - run: pnpm semantic-release
         env:
-          GH_TOKEN: ${{ secrets.WEB_CHAT_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

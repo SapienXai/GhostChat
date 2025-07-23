@@ -1,7 +1,7 @@
 # GhostChat 👻
 
 > **GhostChat** is a **decentralized, server‑less browser extension** that adds a secure chat layer to every dApp, token, or NFT site you visit.\
-> Originally forked from **WebChat**, GhostChat has been **redesigned and super‑charged by the **[**SapienX**](https://sapienx.app)** team** to meet the unique needs of Web3 communities.
+> **Redesigned and super‑charged by the **[**SapienX**](https://sapienx.app)** team** to meet the unique needs of Web3 communities with AI-powered security features.
 
 ---
 
@@ -23,9 +23,9 @@
 
    | Browser              | Link                                                                                                                                         |
    | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-   | Chrome (recommended) | [https://chromewebstore.google.com/detail/ghostchat/XXXXXXXX](https://chromewebstore.google.com/detail/ghostchat/XXXXXXXX)                   |
-   | Edge                 | [https://microsoftedge.microsoft.com/addons/detail/ghostchat/YYYYYYYY](https://microsoftedge.microsoft.com/addons/detail/ghostchat/YYYYYYYY) |
-   | Firefox              | [https://addons.mozilla.org/firefox/addon/ghostchat/](https://addons.mozilla.org/firefox/addon/ghostchat/)                                   |
+   | Chrome (recommended) | [Chrome Web Store - GhostChat](https://chromewebstore.google.com/detail/ghostchat/XXXXXXXX)                   |
+   | Edge                 | [Microsoft Edge Add-ons - GhostChat](https://microsoftedge.microsoft.com/addons/detail/ghostchat/YYYYYYYY) |
+   | Firefox              | [Firefox Add-ons - GhostChat](https://addons.mozilla.org/firefox/addon/ghostchat/)                                   |
 
 2. Refresh the page you’re on.
 
@@ -86,7 +86,7 @@ graph TD
 
 | Status | Feature                                                    |
 | ------ | ---------------------------------------------------------- |
-| ✅      | Fork WebChat → integrate SapienX brand & UI                |
+| ✅      | Launch GhostChat with SapienX brand & Web3 UI              |
 | ✅      | Embed OpenAI GPT‑4o companion                              |
 | ⏳      | Lens Protocol profile linking                              |
 | ⏳      | ENS / .bit name resolution in chat                         |
@@ -104,19 +104,19 @@ graph TD
 3. Push to the branch: `git push origin feature/amazing-idea`
 4. Open a pull request. We review daily!
 
-Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+Please follow our community guidelines when contributing.
 
 ---
 
 ## 🙏 Acknowledgements
 
-GhostChat stands on the shoulders of the awesome **WebChat** project and dozens of open‑source libraries.
+GhostChat is built with dozens of amazing open‑source libraries.
 
 Special thanks to:
 
-- The **WebChat** community for blazing the trail
 - **Artico** and **Remesh** authors for battle‑tested P2P & state solutions
 - **SapienX** designers for the neon‑ghost vibes ([https://sapienx.app/](https://sapienx.app/))
+- The open-source community for making decentralized chat possible
 
 ---
 

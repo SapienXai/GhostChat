@@ -1,5 +1,5 @@
 import type { ChangeEvent, KeyboardEvent, ClipboardEvent } from 'react'
-import { useMemo, useRef, useState, type FC } from 'react'
+import { useMemo, useRef, useState, useEffect, useCallback, type FC } from 'react'
 import { CornerDownLeftIcon } from 'lucide-react'
 import { useRemeshDomain, useRemeshQuery, useRemeshSend } from 'remesh-react'
 import MessageInput from '../../components/message-input'
@@ -45,8 +45,51 @@ const Footer: FC = () => {
   const isComposing = useRef(false)
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const [inputLoading, setInputLoading] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const shareRef = useShareRef(inputRef, setRef)
+
+  // Typing detection logic
+  const sendTypingStatus = useCallback(
+    (typing: boolean) => {
+      if (typing !== isTyping) {
+        setIsTyping(typing)
+        send(chatRoomDomain.command.SendTypingMessageCommand(typing))
+      }
+    },
+    [isTyping, send, chatRoomDomain]
+  )
+
+  const handleTypingStart = useCallback(() => {
+    sendTypingStatus(true)
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+
+    // Set timeout to stop typing after 3 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTypingStatus(false)
+    }, 3000)
+  }, [sendTypingStatus])
+
+  const handleTypingStop = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+    sendTypingStatus(false)
+  }, [sendTypingStatus])
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
+  }, [])
 
   /**
    * When inserting a username using the @ syntax, record the username's position information and the mapping relationship between the position information and userId to distinguish between users with the same name.
@@ -131,6 +174,10 @@ const Footer: FC = () => {
       inputRef.current?.focus()
       return
     }
+
+    // Stop typing when sending message
+    handleTypingStop()
+
     const transformedMessage = await transformMessage(message)
     const atUsers = [...atUserRecord.current]
       .map(([userId, positions]) => {
@@ -195,6 +242,13 @@ const Footer: FC = () => {
 
   const handleInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const currentMessage = e.target.value
+
+    // Trigger typing detection when user types
+    if (currentMessage.trim()) {
+      handleTypingStart()
+    } else {
+      handleTypingStop()
+    }
 
     if (autoCompleteListShow) {
       const target = e.target as HTMLTextAreaElement

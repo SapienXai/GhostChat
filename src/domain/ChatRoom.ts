@@ -18,7 +18,9 @@ export enum SendType {
   Hate = 'Hate',
   Text = 'Text',
   SyncUser = 'SyncUser',
-  SyncHistory = 'SyncHistory'
+  SyncHistory = 'SyncHistory',
+  Typing = 'Typing',
+  Away = 'Away'
 }
 
 export interface SyncUserMessage extends MessageUser {
@@ -57,7 +59,28 @@ export interface TextMessage extends MessageUser {
   atUsers: AtUser[]
 }
 
-export type RoomMessage = SyncUserMessage | SyncHistoryMessage | LikeMessage | HateMessage | TextMessage
+export interface TypingMessage extends MessageUser {
+  type: SendType.Typing
+  id: string
+  sendTime: number
+  isTyping: boolean
+}
+
+export interface AwayMessage extends MessageUser {
+  type: SendType.Away
+  id: string
+  sendTime: number
+  isAway: boolean
+}
+
+export type RoomMessage =
+  | SyncUserMessage
+  | SyncHistoryMessage
+  | LikeMessage
+  | HateMessage
+  | TextMessage
+  | TypingMessage
+  | AwayMessage
 
 export type RoomUser = MessageUser & { peerIds: string[]; joinTime: number }
 
@@ -120,6 +143,20 @@ const RoomMessageSchema = v.union([
     sendTime: v.number(),
     messages: v.array(v.object(NormalMessageSchema)),
     ...MessageUserSchema
+  }),
+  v.object({
+    type: v.literal(SendType.Typing),
+    id: v.string(),
+    sendTime: v.number(),
+    isTyping: v.boolean(),
+    ...MessageUserSchema
+  }),
+  v.object({
+    type: v.literal(SendType.Away),
+    id: v.string(),
+    sendTime: v.number(),
+    isAway: v.boolean(),
+    ...MessageUserSchema
   })
 ])
 
@@ -159,6 +196,34 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.UserListQuery',
       impl: ({ get }) => {
         return get(UserListState())
+      }
+    })
+
+    const TypingUsersState = domain.state<Set<string>>({
+      name: 'Room.TypingUsersState',
+      default: new Set()
+    })
+
+    const TypingUsersQuery = domain.query({
+      name: 'Room.TypingUsersQuery',
+      impl: ({ get }) => {
+        const typingUserIds = get(TypingUsersState())
+        const userList = get(UserListQuery())
+        return userList.filter((user) => typingUserIds.has(user.userId))
+      }
+    })
+
+    const AwayUsersState = domain.state<Set<string>>({
+      name: 'Room.AwayUsersState',
+      default: new Set()
+    })
+
+    const AwayUsersQuery = domain.query({
+      name: 'Room.AwayUsersQuery',
+      impl: ({ get }) => {
+        const awayUserIds = get(AwayUsersState())
+        const userList = get(UserListQuery())
+        return userList.filter((user) => awayUserIds.has(user.userId))
       }
     })
 
@@ -314,6 +379,42 @@ const ChatRoomDomain = Remesh.domain({
       }
     })
 
+    const SendTypingMessageCommand = domain.command({
+      name: 'Room.SendTypingMessageCommand',
+      impl: ({ get }, isTyping: boolean) => {
+        const self = get(SelfUserQuery())
+
+        const typingMessage: TypingMessage = {
+          ...self,
+          id: nanoid(),
+          sendTime: Date.now(),
+          type: SendType.Typing,
+          isTyping
+        }
+
+        chatRoomExtern.sendMessage(typingMessage)
+        return [SendTypingMessageEvent(typingMessage)]
+      }
+    })
+
+    const SendAwayMessageCommand = domain.command({
+      name: 'Room.SendAwayMessageCommand',
+      impl: ({ get }, isAway: boolean) => {
+        const self = get(SelfUserQuery())
+
+        const awayMessage: AwayMessage = {
+          ...self,
+          id: nanoid(),
+          sendTime: Date.now(),
+          type: SendType.Away,
+          isAway
+        }
+
+        chatRoomExtern.sendMessage(awayMessage)
+        return [SendAwayMessageEvent(awayMessage)]
+      }
+    })
+
     const SendSyncUserMessageCommand = domain.command({
       name: 'Room.SendSyncUserMessageCommand',
       impl: ({ get }, peerId: string) => {
@@ -454,6 +555,14 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.SendHateMessageEvent'
     })
 
+    const SendTypingMessageEvent = domain.event<TypingMessage>({
+      name: 'Room.SendTypingMessageEvent'
+    })
+
+    const SendAwayMessageEvent = domain.event<AwayMessage>({
+      name: 'Room.SendAwayMessageEvent'
+    })
+
     const JoinRoomEvent = domain.event<string>({
       name: 'Room.JoinRoomEvent'
     })
@@ -591,6 +700,26 @@ const ChatRoomDomain = Remesh.domain({
                     })
                   )
                 }
+                case SendType.Typing: {
+                  const typingUsers = get(TypingUsersState())
+                  const newTypingUsers = new Set(typingUsers)
+                  if (message.isTyping) {
+                    newTypingUsers.add(message.userId)
+                  } else {
+                    newTypingUsers.delete(message.userId)
+                  }
+                  return of(TypingUsersState().new(newTypingUsers))
+                }
+                case SendType.Away: {
+                  const awayUsers = get(AwayUsersState())
+                  const newAwayUsers = new Set(awayUsers)
+                  if (message.isAway) {
+                    newAwayUsers.add(message.userId)
+                  } else {
+                    newAwayUsers.delete(message.userId)
+                  }
+                  return of(AwayUsersState().new(newAwayUsers))
+                }
                 default:
                   console.warn('Unsupported message type', message)
                   return EMPTY
@@ -657,7 +786,9 @@ const ChatRoomDomain = Remesh.domain({
       query: {
         PeerIdQuery,
         UserListQuery,
-        JoinIsFinishedQuery
+        JoinIsFinishedQuery,
+        TypingUsersQuery,
+        AwayUsersQuery
       },
       command: {
         JoinRoomCommand,
@@ -666,7 +797,9 @@ const ChatRoomDomain = Remesh.domain({
         SendLikeMessageCommand,
         SendHateMessageCommand,
         SendSyncUserMessageCommand,
-        SendSyncHistoryMessageCommand
+        SendSyncHistoryMessageCommand,
+        SendTypingMessageCommand,
+        SendAwayMessageCommand
       },
       event: {
         SendTextMessageEvent,
@@ -674,6 +807,8 @@ const ChatRoomDomain = Remesh.domain({
         SendHateMessageEvent,
         SendSyncUserMessageEvent,
         SendSyncHistoryMessageEvent,
+        SendTypingMessageEvent,
+        SendAwayMessageEvent,
         JoinRoomEvent,
         SelfJoinRoomEvent,
         LeaveRoomEvent,

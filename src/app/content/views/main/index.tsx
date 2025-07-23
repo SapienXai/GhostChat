@@ -4,6 +4,7 @@ import { useRemeshDomain, useRemeshQuery, useRemeshSend } from 'remesh-react'
 import MessageList from '../../components/message-list'
 import MessageItem from '../../components/message-item'
 import PromptItem from '../../components/prompt-item'
+import TypingIndicator from '../../components/typing-indicator'
 import UserInfoDomain from '@/domain/UserInfo'
 import ChatRoomDomain, { MessageType } from '@/domain/ChatRoom'
 import MessageListDomain from '@/domain/MessageList'
@@ -57,6 +58,7 @@ const Main: FC = () => {
           ></PromptItem>
         )
       )}
+      <TypingIndicator />
     </MessageList>
   )
 }

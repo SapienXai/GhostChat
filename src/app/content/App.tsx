@@ -17,6 +17,7 @@ import DanmakuDomain from '@/domain/Danmaku'
 import AppStatusDomain from '@/domain/AppStatus'
 import { checkDarkMode, cn } from '@/utils'
 import VirtualRoomDomain from '@/domain/VirtualRoom'
+import useAwayDetection from '@/hooks/useAwayDetection'
 
 /**
  * Fix requestAnimationFrame error in jest
@@ -90,6 +91,9 @@ export default function App() {
       : (userInfo?.themeMode ?? (checkDarkMode() ? 'dark' : 'light'))
 
   const danmakuContainerRef = useRef<HTMLDivElement>(null)
+
+  // Enable away detection when user is in a chat room
+  useAwayDetection()
 
   return (
     <div id="app" className={cn('contents', themeMode)}>

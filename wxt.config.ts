@@ -33,7 +33,7 @@ export default defineConfig({
         ...common,
         browser_specific_settings: {
           gecko: {
-            id: 'molvqingtai@gmail.com'
+            id: 'ghostchat@sapienx.app'
           }
         }
       }

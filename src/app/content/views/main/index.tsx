@@ -6,8 +6,8 @@ import MessageItem from '../../components/message-item'
 import PromptItem from '../../components/prompt-item'
 import TypingIndicator from '../../components/typing-indicator'
 import UserInfoDomain from '@/domain/UserInfo'
-import ChatRoomDomain, { MessageType } from '@/domain/ChatRoom'
-import MessageListDomain from '@/domain/MessageList'
+import ChatRoomDomain from '@/domain/ChatRoom'
+import MessageListDomain, { MessageType } from '@/domain/MessageList'
 
 const Main: FC = () => {
   const send = useRemeshSend()
@@ -39,25 +39,29 @@ const Main: FC = () => {
 
   return (
     <MessageList>
-      {messageList.map((message, index) =>
-        message.type === MessageType.Normal ? (
-          <MessageItem
-            key={message.id}
-            data={message}
-            like={message.like}
-            hate={message.hate}
-            onLikeChange={() => handleLikeChange(message.id)}
-            onHateChange={() => handleHateChange(message.id)}
-            className="duration-300 animate-in fade-in-0"
-          ></MessageItem>
-        ) : (
-          <PromptItem
-            key={message.id}
-            data={message}
-            className={`${index === 0 ? 'pt-4' : ''} ${index === messageList.length - 1 ? 'pb-4' : ''}`}
-          ></PromptItem>
-        )
-      )}
+      {messageList.map((message, index) => {
+        if (message.type === MessageType.Normal) {
+          return (
+            <MessageItem
+              key={message.id}
+              data={message}
+              like={message.like}
+              hate={message.hate}
+              onLikeChange={() => handleLikeChange(message.id)}
+              onHateChange={() => handleHateChange(message.id)}
+              className="duration-300 animate-in fade-in-0"
+            />
+          )
+        } else {
+          return (
+            <PromptItem
+              key={message.id}
+              data={message}
+              className={`${index === 0 ? 'pt-4' : ''} ${index === messageList.length - 1 ? 'pb-4' : ''}`}
+            />
+          )
+        }
+      })}
       <TypingIndicator />
     </MessageList>
   )

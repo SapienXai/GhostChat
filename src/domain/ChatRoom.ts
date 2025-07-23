@@ -535,6 +535,20 @@ const ChatRoomDomain = Remesh.domain({
       }
     })
 
+    const UpdateTypingUsersCommand = domain.command({
+      name: 'Room.UpdateTypingUsersCommand',
+      impl: (_, typingUsers: Set<string>) => {
+        return [TypingUsersState().new(typingUsers)]
+      }
+    })
+
+    const UpdateAwayUsersCommand = domain.command({
+      name: 'Room.UpdateAwayUsersCommand',
+      impl: (_, awayUsers: Set<string>) => {
+        return [AwayUsersState().new(awayUsers)]
+      }
+    })
+
     const SendSyncHistoryMessageEvent = domain.event<SyncHistoryMessage>({
       name: 'Room.SendSyncHistoryMessageEvent'
     })
@@ -708,7 +722,7 @@ const ChatRoomDomain = Remesh.domain({
                   } else {
                     newTypingUsers.delete(message.userId)
                   }
-                  return of(TypingUsersState().new(newTypingUsers))
+                  return of(UpdateTypingUsersCommand(newTypingUsers))
                 }
                 case SendType.Away: {
                   const awayUsers = get(AwayUsersState())
@@ -718,7 +732,7 @@ const ChatRoomDomain = Remesh.domain({
                   } else {
                     newAwayUsers.delete(message.userId)
                   }
-                  return of(AwayUsersState().new(newAwayUsers))
+                  return of(UpdateAwayUsersCommand(newAwayUsers))
                 }
                 default:
                   console.warn('Unsupported message type', message)

@@ -50,6 +50,10 @@ export default defineConfig({
       svgr({
         include: '**/*.svg'
       })
-    ]
+    ],
+    server: {
+      port: 3000,
+      strictPort: true
+    }
   })
 })

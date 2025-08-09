@@ -1,4 +1,4 @@
-import { useState, type FC } from 'react'
+import { useState, useEffect, type FC } from 'react'
 import { Globe2Icon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
@@ -14,9 +14,15 @@ import { AvatarCircles } from '@/components/magicui/avatar-circles'
 import Link from '@/components/link'
 import NumberFlow from '@number-flow/react'
 import SocialLinks from './social-links'
+import { detectWeb3Context, getChainIcon, getPlatformIcon } from '@/utils/detectWeb3'
+import { getWalletInfo, getProviderIcon, type WalletInfo } from '@/utils/getWalletInfo'
+import injectScript from '@/utils/injectScript'
+import type { PublicPath } from 'wxt/browser'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
 const Header: FC = () => {
   const siteInfo = getSiteInfo()
+  const web3 = detectWeb3Context()
   const chatRoomDomain = useRemeshDomain(ChatRoomDomain())
   const virtualRoomDomain = useRemeshDomain(VirtualRoomDomain())
   const chatUserList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
@@ -42,6 +48,73 @@ const Header: FC = () => {
   const [virtualOnlineGroupScrollParentRef, setVirtualOnlineGroupScrollParentRef] = useState<HTMLDivElement | null>(
     null
   )
+  const [walletInfo, setWalletInfo] = useState<WalletInfo>({ isDetected: false })
+
+  // Detect wallet on component mount
+  useEffect(() => {
+    let handler: EventListener | null = null
+    let messageHandler: ((e: MessageEvent) => void) | null = null
+    let fallbackTimeout: ReturnType<typeof setTimeout> | null = null
+
+    const detectWallet = async () => {
+      try {
+        // Listen for injected detection result (document event)
+        handler = ((e: Event) => {
+          const detail = (e as CustomEvent).detail
+          if (detail && typeof detail === 'object') {
+            setWalletInfo({
+              isDetected: !!detail.isDetected,
+              provider: detail.provider,
+              chainId: detail.chainId,
+              chainName: detail.chainName,
+              error: detail.error
+            })
+          }
+        }) as EventListener
+        document.addEventListener('ghostchat-wallet-detected', handler as EventListener)
+
+        // Also listen via postMessage as fallback
+        messageHandler = (e: MessageEvent) => {
+          if (e?.data && e.data.source === 'ghostchat' && e.data.type === 'walletDetected') {
+            const detail = e.data.payload
+            setWalletInfo({
+              isDetected: !!detail.isDetected,
+              provider: detail.provider,
+              chainId: detail.chainId,
+              chainName: detail.chainName,
+              error: detail.error
+            })
+          }
+        }
+        window.addEventListener('message', messageHandler)
+
+        // Inject the script into page context (public asset path)
+        await injectScript('inject-wallet-detect.js' as PublicPath)
+
+        // Fallback to direct detection in case injection fails or yields nothing
+        fallbackTimeout = setTimeout(async () => {
+          const info = await getWalletInfo()
+          setWalletInfo((prev) => (prev.isDetected ? prev : info))
+        }, 400)
+      } catch {
+        // Fallback if injection fails, and record a friendly reason
+        const info = await getWalletInfo()
+        if (!info.isDetected) {
+          setWalletInfo({ isDetected: false, error: 'Detection blocked by page CSP or no wallet present' })
+        } else {
+          setWalletInfo(info)
+        }
+      }
+    }
+
+    detectWallet()
+
+    return () => {
+      if (handler) document.removeEventListener('ghostchat-wallet-detected', handler)
+      if (messageHandler) window.removeEventListener('message', messageHandler)
+      if (fallbackTimeout) clearTimeout(fallbackTimeout)
+    }
+  }, [])
 
   return (
     <div className="z-10 grid h-16 grid-flow-col grid-cols-[auto_1fr_auto] items-center justify-between rounded-t-xl bg-white px-4 backdrop-blur-lg dark:bg-slate-950">
@@ -58,6 +131,72 @@ const Header: FC = () => {
               <span className="truncate text-base font-semibold text-slate-600 dark:text-slate-50">
                 {siteInfo.hostname.replace(/^www\./i, '')}
               </span>
+              {web3.isWeb3Site && (
+                <span className="ml-2 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] leading-none text-slate-700 dark:text-slate-100">
+                  <span aria-hidden>{getPlatformIcon(web3.platform)}</span>
+                  <span>{web3.platform?.toUpperCase()}</span>
+                  {web3.chain && (
+                    <span className="ml-1 inline-flex items-center gap-0.5">
+                      <span aria-hidden>{getChainIcon(web3.chain)}</span>
+                      <span>{web3.chain}</span>
+                    </span>
+                  )}
+                </span>
+              )}
+              {walletInfo.isDetected && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <span className="ml-2 inline-flex cursor-pointer items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] leading-none text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30">
+                      <span aria-hidden>{getProviderIcon(walletInfo.provider)}</span>
+                      <span>WALLET</span>
+                      {walletInfo.chainName && (
+                        <span className="ml-1 inline-flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                          <span aria-hidden>{getChainIcon(walletInfo.chainName)}</span>
+                          <span>{walletInfo.chainName}</span>
+                        </span>
+                      )}
+                      {walletInfo.error && (
+                        <span className="ml-1 text-orange-600 dark:text-orange-400" title={walletInfo.error}>
+                          !
+                        </span>
+                      )}
+                    </span>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72">
+                    <div className="grid gap-2 text-sm">
+                      <div className="font-semibold">Wallet detected</div>
+                      <div className="grid grid-cols-[auto_1fr] items-center gap-x-2">
+                        <span className="text-xs text-muted-foreground">Provider</span>
+                        <div className="inline-flex items-center gap-1">
+                          <span aria-hidden>{getProviderIcon(walletInfo.provider)}</span>
+                          <span className="capitalize">{walletInfo.provider}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Chain</span>
+                        <div className="inline-flex items-center gap-1">
+                          <span aria-hidden>{getChainIcon(walletInfo.chainName)}</span>
+                          <span>{walletInfo.chainName || 'Unknown'}</span>
+                          {walletInfo.chainId && (
+                            <span className="ml-1 text-xs text-muted-foreground">({walletInfo.chainId})</span>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">Status</span>
+                        <div className="inline-flex items-center gap-1">
+                          {!walletInfo.error ? (
+                            <span className="text-green-600 dark:text-green-400">OK</span>
+                          ) : (
+                            <span className="text-orange-600 dark:text-orange-400">{walletInfo.error}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="pt-2">
+                        <Button size="sm" variant="secondary" disabled className="w-full cursor-not-allowed opacity-70">
+                          Connect wallet (coming soon)
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </Button>
           </HoverCardTrigger>
           <HoverCardContent className="w-80 rounded-lg p-0">

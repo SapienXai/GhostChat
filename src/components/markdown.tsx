@@ -4,6 +4,13 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { cn } from '@/utils'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
+import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
+import typescript from 'react-syntax-highlighter/dist/esm/languages/hljs/typescript'
+import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json'
+import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css'
+import xml from 'react-syntax-highlighter/dist/esm/languages/hljs/xml'
 
 export interface MarkdownProps {
   children?: string
@@ -39,6 +46,16 @@ const urlTransform = (value: string) => {
 
   return ''
 }
+
+// Register languages
+SyntaxHighlighter.registerLanguage('javascript', javascript)
+SyntaxHighlighter.registerLanguage('typescript', typescript)
+SyntaxHighlighter.registerLanguage('json', json)
+SyntaxHighlighter.registerLanguage('css', css)
+SyntaxHighlighter.registerLanguage('xml', xml)
+SyntaxHighlighter.registerLanguage('html', xml)
+SyntaxHighlighter.registerLanguage('jsx', javascript)
+SyntaxHighlighter.registerLanguage('tsx', typescript)
 
 const Markdown: FC<MarkdownProps> = ({ children = '', className }) => {
   return (
@@ -109,18 +126,45 @@ const Markdown: FC<MarkdownProps> = ({ children = '', className }) => {
             )
           },
           pre: ({ className, ...props }) => <pre className={cn('my-2', className)} {...props} />,
-          /**
-           * TODO: Code highlight
-           * @see https://github.com/remarkjs/react-markdown/issues/680
-           * @see https://shiki.style/guide/install#usage
-           *
-           */
-          code: ({ className, ...props }) => (
-            <ScrollArea className="overscroll-y-auto" scrollLock={false}>
-              <code className={cn('text-sm', className)} {...props}></code>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          )
+          code: ({ className, children, ...props }) => {
+            const match = /language-(\w+)/.exec(className || '')
+            const language = match ? match[1] : ''
+            const isInline = !match
+
+            if (isInline) {
+              return (
+                <code
+                  className={cn(
+                    'relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold',
+                    className
+                  )}
+                  {...props}
+                >
+                  {children}
+                </code>
+              )
+            }
+
+            const codeString = String(children).replace(/\n$/, '')
+
+            return (
+              <ScrollArea className="overscroll-y-auto" scrollLock={false}>
+                <SyntaxHighlighter
+                  style={atomOneDark}
+                  language={language || 'text'}
+                  PreTag="div"
+                  className={cn(
+                    'rounded-md border bg-muted p-4 font-mono text-sm',
+                    'dark:bg-slate-900 dark:border-slate-700',
+                    className
+                  )}
+                >
+                  {codeString}
+                </SyntaxHighlighter>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            )
+          }
         }}
         remarkPlugins={[remarkGfm, remarkBreaks]}
       >

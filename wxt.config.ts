@@ -54,6 +54,10 @@ export default defineConfig({
     server: {
       port: 3000,
       strictPort: true
+    },
+    build: {
+      // Prevent inlining large assets to avoid UTF-8 encoding issues
+      assetsInlineLimit: 1024 // Reduce from default 4KB to 1KB
     }
   })
 })

@@ -12,8 +12,17 @@ export interface EmojiButtonProps {
 
 const emojiGroups = chunk([...EMOJI_LIST], 6)
 
-// BUG: https://github.com/radix-ui/primitives/pull/2433
-// BUG https://github.com/radix-ui/primitives/issues/1666
+/**
+ * WORKAROUNDS FOR RADIX UI BUGS:
+ *
+ * 1. Shadow DOM issue (https://github.com/radix-ui/primitives/pull/2433):
+ *    Popover dismiss events don't work correctly in shadow DOM environments.
+ *    Current workaround: Using controlled state with onOpenChange.
+ *
+ * 2. ScrollArea Viewport asChild issue (https://github.com/radix-ui/primitives/issues/1666):
+ *    The asChild prop on ScrollArea.Viewport doesn't work correctly due to extra DOM nodes.
+ *    Current workaround: Not using asChild on ScrollArea components.
+ */
 const EmojiButton: FC<EmojiButtonProps> = ({ onSelect }) => {
   const [open, setOpen] = useState(false)
 
@@ -23,7 +32,8 @@ const EmojiButton: FC<EmojiButtonProps> = ({ onSelect }) => {
   }
 
   const handleCloseAutoFocus = (event: Event) => {
-    // Close does not trigger focus
+    // Prevent auto-focus on close to avoid focus management issues
+    // This helps with the shadow DOM bug mentioned above
     event.preventDefault()
   }
 

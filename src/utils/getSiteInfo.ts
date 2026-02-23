@@ -13,19 +13,51 @@ export interface SiteInfo {
   discord?: string
 }
 
-const getIcon = (): string => {
-  const path =
-    document.querySelector('link[rel="icon" i]')?.getAttribute('href') ??
-    document.querySelector('link[rel="shortcut icon" i]')?.getAttribute('href') ??
-    document.querySelector('meta[property="og:image" i]')?.getAttribute('content') ??
-    document.querySelector('link[rel="apple-touch-icon" i]')?.getAttribute('href') ??
-    `/favicon.ico`
-
+const resolveIconURL = (path: string) => {
   if (path.startsWith('data:') || path.startsWith('//')) {
     return path
-  } else {
-    return buildFullURL(document.location.origin, path)
   }
+  return buildFullURL(document.location.origin, path)
+}
+
+const getIconScore = (el: HTMLLinkElement): number => {
+  const href = el.getAttribute('href') || ''
+  const sizes = (el.getAttribute('sizes') || '').toLowerCase()
+  if (!href) return -1
+
+  // Prefer vector icons, then largest declared pixel size.
+  if (sizes.includes('any') || href.endsWith('.svg')) return 10000
+
+  const values = sizes
+    .split(/\s+/)
+    .map((item) => item.match(/^(\d+)x(\d+)$/i))
+    .filter(Boolean)
+    .map((match) => {
+      const size = Number.parseInt(match![1], 10)
+      return Number.isNaN(size) ? 0 : size
+    })
+
+  if (values.length > 0) {
+    return Math.max(...values)
+  }
+
+  if (el.rel.toLowerCase().includes('apple-touch-icon')) return 180
+  if (el.rel.toLowerCase().includes('icon')) return 16
+  return 0
+}
+
+const getIcon = (): string => {
+  const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel*="icon" i]')].filter((el) =>
+    Boolean(el.getAttribute('href'))
+  )
+  const bestLink = links.sort((a, b) => getIconScore(b) - getIconScore(a))[0]
+
+  const path =
+    bestLink?.getAttribute('href') ??
+    document.querySelector('meta[property="og:image" i]')?.getAttribute('content') ??
+    '/favicon.ico'
+
+  return resolveIconURL(path)
 }
 
 const getSocialLink = (selector: string): string | undefined => {
@@ -44,7 +76,7 @@ const getSiteInfo = (): SiteInfo => {
       document.title,
     icon: getIcon(),
     description:
-      document.querySelector('meta[property="og:description i"]')?.getAttribute('content') ??
+      document.querySelector('meta[property="og:description" i]')?.getAttribute('content') ??
       document.querySelector('meta[name="description" i]')?.getAttribute('content') ??
       '',
     twitter: getSocialLink('a[href*="twitter.com"]'),

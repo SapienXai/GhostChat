@@ -33,6 +33,7 @@ const Footer: FC = () => {
   const userInfoDomain = useRemeshDomain(UserInfoDomain())
   const userInfo = useRemeshQuery(userInfoDomain.query.UserInfoQuery())
   const userList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
+  const chatRoomJoinIsFinished = useRemeshQuery(chatRoomDomain.query.JoinIsFinishedQuery())
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { x, y, selectionStart, selectionEnd, setRef } = useCursorPosition()
@@ -53,12 +54,13 @@ const Footer: FC = () => {
   // Typing detection logic
   const sendTypingStatus = useCallback(
     (typing: boolean) => {
+      if (!chatRoomJoinIsFinished) return
       if (typing !== isTyping) {
         setIsTyping(typing)
         send(chatRoomDomain.command.SendTypingMessageCommand(typing))
       }
     },
-    [isTyping, send, chatRoomDomain]
+    [chatRoomJoinIsFinished, isTyping, send, chatRoomDomain]
   )
 
   const handleTypingStart = useCallback(() => {
@@ -170,7 +172,14 @@ const Footer: FC = () => {
   }
 
   const handleSend = async () => {
-    if (!`${message}`.trim()) {
+    if (!chatRoomJoinIsFinished) {
+      send(toastDomain.command.WarningCommand('Chat connection is not ready yet. Please wait a moment.'))
+      inputRef.current?.focus()
+      return
+    }
+
+    const currentMessage = inputRef.current?.value ?? message
+    if (!`${currentMessage}`.trim()) {
       inputRef.current?.focus()
       return
     }
@@ -178,7 +187,7 @@ const Footer: FC = () => {
     // Stop typing when sending message
     handleTypingStop()
 
-    const transformedMessage = await transformMessage(message)
+    const transformedMessage = await transformMessage(currentMessage)
     const atUsers = [...atUserRecord.current]
       .map(([userId, positions]) => {
         const user = userList.find((user) => user.userId === userId)
@@ -240,7 +249,7 @@ const Footer: FC = () => {
     }
   }
 
-  const handleInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const currentMessage = e.target.value
 
     // Trigger typing detection when user types
@@ -410,10 +419,16 @@ const Footer: FC = () => {
       <MessageInput
         ref={shareRef}
         value={message}
-        onInput={handleInput}
+        onChange={handleChange}
         loading={inputLoading}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
+        onCompositionStart={() => {
+          isComposing.current = true
+        }}
+        onCompositionEnd={() => {
+          isComposing.current = false
+        }}
         maxLength={MESSAGE_MAX_LENGTH}
       ></MessageInput>
       <div className="flex items-center">

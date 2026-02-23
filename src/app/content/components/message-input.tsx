@@ -14,7 +14,7 @@ export interface MessageInputProps {
   autoFocus?: boolean
   disabled?: boolean
   loading?: boolean
-  onInput?: (e: ChangeEvent<HTMLTextAreaElement>) => void
+  onChange?: (e: ChangeEvent<HTMLTextAreaElement>) => void
   onPaste?: (e: ClipboardEvent<HTMLTextAreaElement>) => void
   onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void
   onCompositionStart?: (e: CompositionEvent<HTMLTextAreaElement>) => void
@@ -31,7 +31,7 @@ const MessageInput = ({
   value = '',
   className,
   maxLength = 500,
-  onInput,
+  onChange,
   onPaste,
   onKeyDown,
   onCompositionStart,
@@ -55,7 +55,7 @@ const MessageInput = ({
           onCompositionStart={onCompositionStart}
           onCompositionEnd={onCompositionEnd}
           placeholder="Type your message here."
-          onInput={onInput}
+          onChange={onChange}
           disabled={disabled || loading}
           className={cn(
             'box-border resize-none whitespace-pre-wrap px-2 text-sm text-foreground break-words border-none bg-slate-100 pb-5 [word-break:break-word] focus-visible:ring-0 dark:bg-transparent',

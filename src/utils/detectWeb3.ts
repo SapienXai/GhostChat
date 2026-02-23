@@ -141,7 +141,9 @@ export const detectWeb3Context = (): Web3Context => {
       'web3'
     ]
 
-    return web3Keywords.some((keyword) => title.includes(keyword) || description.includes(keyword))
+    return web3Keywords.some(
+      (keyword) => title.includes(keyword) || description.includes(keyword) || pathname.includes(keyword)
+    )
   }
 
   // Check for window.ethereum or other Web3 provider objects
@@ -149,7 +151,9 @@ export const detectWeb3Context = (): Web3Context => {
     return !!(window as any).ethereum || !!(window as any).solana || !!(window as any).phantom || !!(window as any).web3
   }
 
-  const isWeb3Site = hasWeb3Indicators() || hasWeb3Provider()
+  const hasProviderWithWeb3Hints =
+    hasWeb3Provider() && /(web3|defi|dex|nft|dao|bridge|token|swap|wallet|staking|airdrop|mint)/.test(url)
+  const isWeb3Site = hasWeb3Indicators() || hasProviderWithWeb3Hints
 
   return {
     isWeb3Site,

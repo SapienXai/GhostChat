@@ -18,6 +18,8 @@ import AppStatusDomain from '@/domain/AppStatus'
 import { checkDarkMode, cn } from '@/utils'
 import VirtualRoomDomain from '@/domain/VirtualRoom'
 import useAwayDetection from '@/hooks/useAwayDetection'
+import { useState } from 'react'
+import type { MainTab } from '@/app/content/views/main'
 
 /**
  * Fix requestAnimationFrame error in jest
@@ -29,6 +31,7 @@ if (import.meta.env.FIREFOX) {
 }
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<MainTab>('chat')
   const send = useRemeshSend()
   const chatRoomDomain = useRemeshDomain(ChatRoomDomain())
   const virtualRoomDomain = useRemeshDomain(VirtualRoomDomain())
@@ -46,6 +49,7 @@ export default function App() {
 
   const userInfo = useRemeshQuery(userInfoDomain.query.UserInfoQuery())
   const notUserInfo = userInfoLoadFinished && !userInfoSetFinished
+  const leaderboardEnabled = userInfoSetFinished && chatRoomJoinIsFinished && virtualRoomJoinIsFinished
 
   const joinRoom = () => {
     send(chatRoomDomain.command.JoinRoomCommand())
@@ -101,8 +105,8 @@ export default function App() {
         <>
           <AppMain>
             <Header />
-            <Main />
-            <Footer />
+            <Main activeTab={activeTab} onTabChange={setActiveTab} leaderboardEnabled={leaderboardEnabled} />
+            {activeTab === 'chat' && <Footer />}
             {notUserInfo && <Setup></Setup>}
             <Toaster
               richColors

@@ -97,7 +97,7 @@ const Header: FC = () => {
         <div className="flex items-center gap-2">
           <HoverCard>
             <HoverCardTrigger asChild>
-              <Button className="overflow-visible rounded-md p-0 -mb-0" variant="link">
+              <Button className="ml-[5px] overflow-visible rounded-md p-0 -mb-0" variant="link">
                 <span className="truncate text-base font-semibold text-slate-600 dark:text-slate-50">
                   {siteInfo.hostname.replace(/^www\./i, '')}
                 </span>

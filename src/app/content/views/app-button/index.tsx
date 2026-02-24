@@ -1,4 +1,4 @@
-import { type FC, useState, type MouseEvent, useEffect } from 'react'
+import { type FC, useRef, useState, type MouseEvent, useEffect } from 'react'
 import { SettingsIcon, MoonIcon, SunIcon, HandIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -31,10 +31,13 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
   const isDarkMode = userInfo?.themeMode === 'dark' ? true : userInfo?.themeMode === 'light' ? false : checkDarkMode()
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null)
+  const draggedRef = useRef(false)
 
   const {
     x,
     y,
+    startDrag,
     setRef: appButtonRef
   } = useDraggable({
     initX: appPosition.x,
@@ -74,6 +77,37 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
 
   const handleToggleApp = () => {
     send(appStatusDomain.command.UpdateOpenCommand(!appOpenStatus))
+  }
+
+  const handleIconMouseDown = (e: MouseEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return
+    startDrag(e.clientX, e.clientY)
+    dragStartRef.current = { x: e.clientX, y: e.clientY }
+    draggedRef.current = false
+  }
+
+  const handleIconMouseMove = (e: MouseEvent<HTMLButtonElement>) => {
+    if ((e.buttons & 1) !== 1 || !dragStartRef.current) return
+    const deltaX = Math.abs(e.clientX - dragStartRef.current.x)
+    const deltaY = Math.abs(e.clientY - dragStartRef.current.y)
+    if (deltaX > 4 || deltaY > 4) {
+      draggedRef.current = true
+    }
+  }
+
+  const handleIconClick = (e: MouseEvent<HTMLButtonElement>) => {
+    if (draggedRef.current) {
+      e.preventDefault()
+      e.stopPropagation()
+      draggedRef.current = false
+      return
+    }
+    handleToggleApp()
+  }
+
+  const handleHandMouseDown = (e: MouseEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return
+    startDrag(e.clientX, e.clientY)
   }
 
   return (
@@ -120,7 +154,7 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
               <SettingsIcon className="size-5" />
             </Button>
             <Button
-              ref={appButtonRef}
+              onMouseDown={handleHandMouseDown}
               variant="outline"
               className="size-10 cursor-grab dark:bg-background rounded-full p-0 dark:text-foreground shadow dark:border-slate-600 dark:hover:bg-accent"
             >
@@ -130,7 +164,11 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
         )}
       </AnimatePresence>
       <Button
-        onClick={handleToggleApp}
+        ref={appButtonRef}
+        onMouseDown={handleIconMouseDown}
+        onMouseMove={handleIconMouseMove}
+        onClick={handleIconClick}
+        onDragStart={(e) => e.preventDefault()}
         onContextMenu={handleToggleMenu}
         className="relative z-20 size-11 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-hidden after:absolute after:-inset-0.5 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),theme(colors.slate.500)_0%,theme(colors.white)_10%,theme(colors.slate.500)_20%)]"
       >
@@ -152,7 +190,11 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
         </AnimatePresence>
 
         <div className="relative z-15 h-full w-full rounded-full p-0.5">
-          <img src={isDarkMode ? LogoB : LogoW} className="h-full w-full rounded-full object-cover" />
+          <img
+            src={isDarkMode ? LogoB : LogoW}
+            draggable={false}
+            className="h-full w-full rounded-full object-cover pointer-events-none select-none"
+          />
         </div>
       </Button>
     </div>

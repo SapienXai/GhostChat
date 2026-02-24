@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import type { RoomUser, SiteStats } from '@/domain/VirtualRoom'
 import { cn } from '@/utils'
-import { FlameIcon, MessageCircleIcon, TimerIcon, UsersIcon } from 'lucide-react'
+import { ExternalLinkIcon, FlameIcon, MessageCircleIcon, TimerIcon, UsersIcon } from 'lucide-react'
 import { type FC, useMemo } from 'react'
 
 interface LeaderboardProject {
@@ -233,9 +234,14 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
                   >
                     #{index + 1}
                   </span>
-                  <h4 className="line-clamp-1 text-sm font-semibold text-slate-700 dark:text-slate-100">
+                  <a
+                    href={project.origin}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="line-clamp-1 text-sm font-semibold text-slate-700 hover:underline dark:text-slate-100"
+                  >
                     {project.name}
-                  </h4>
+                  </a>
                 </div>
                 <a
                   href={project.origin}
@@ -246,9 +252,22 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
                   {getHostLabel(project.origin)}
                 </a>
               </div>
-              <Badge variant="secondary" className="text-2xs">
-                Hot {project.hotScore}
-              </Badge>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="text-2xs">
+                  Hot {project.hotScore}
+                </Badge>
+                <Button
+                  asChild
+                  size="xs"
+                  variant="outline"
+                  className="h-6 gap-1 rounded-md px-2 text-2xs text-slate-600 dark:text-slate-200"
+                >
+                  <a href={project.origin} target="_blank" rel="noreferrer">
+                    Open
+                    <ExternalLinkIcon size={10} />
+                  </a>
+                </Button>
+              </div>
             </div>
             <p className="mt-2 line-clamp-2 text-xs text-slate-600 dark:text-slate-300">{project.description}</p>
             <div className="mt-2 flex flex-wrap gap-1">

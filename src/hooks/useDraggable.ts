@@ -66,13 +66,20 @@ const useDraggable = (options: DargOptions) => {
     document.documentElement.style.userSelect = ''
   }, [])
 
-  const handleStart = useCallback((e: MouseEvent) => {
-    const { clientX, clientY } = e
+  const startDrag = useCallback((clientX: number, clientY: number) => {
     mousePosition.current = { x: clientX, y: clientY }
     isMove.current = true
     document.documentElement.style.userSelect = 'none'
     document.documentElement.style.cursor = 'grab'
   }, [])
+
+  const handleStart = useCallback(
+    (e: MouseEvent) => {
+      const { clientX, clientY } = e
+      startDrag(clientX, clientY)
+    },
+    [startDrag]
+  )
 
   const handleRef = useRef<HTMLElement | null>(null)
 
@@ -93,7 +100,7 @@ const useDraggable = (options: DargOptions) => {
     [handleEnd, handleMove, handleStart]
   )
 
-  return { setRef, ...position }
+  return { setRef, startDrag, ...position }
 }
 
 export default useDraggable

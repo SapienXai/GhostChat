@@ -23,6 +23,7 @@ interface LeaderboardProject {
 type ProjectTier = 'blue-chip' | 'established' | 'rising'
 const TIER_BADGE_LABELS = ['Blue Chip', 'Established', 'Rising'] as const
 const PINNED_MIDDLE_ORIGINS = ['https://coincollect.org/', 'https://questlayer.app/'] as const
+const normalizeOrigin = (origin: string) => origin.replace(/\/+$/, '')
 
 const getHostLabel = (origin: string) => {
   try {
@@ -93,13 +94,13 @@ const tierFromBadgeLabel = (tag: (typeof TIER_BADGE_LABELS)[number]): ProjectTie
   )[tag]
 
 const applyPinnedMiddleProjects = (projects: LeaderboardProject[], pool: LeaderboardProject[]) => {
-  const pinned = PINNED_MIDDLE_ORIGINS.map((origin) => pool.find((project) => project.origin === origin)).filter(
-    Boolean
-  ) as LeaderboardProject[]
+  const pinned = PINNED_MIDDLE_ORIGINS.map((origin) =>
+    pool.find((project) => normalizeOrigin(project.origin) === normalizeOrigin(origin))
+  ).filter(Boolean) as LeaderboardProject[]
   if (pinned.length === 0) return projects
 
   const list = projects.filter(
-    (project) => !PINNED_MIDDLE_ORIGINS.includes(project.origin as (typeof PINNED_MIDDLE_ORIGINS)[number])
+    (project) => !PINNED_MIDDLE_ORIGINS.some((origin) => normalizeOrigin(project.origin) === normalizeOrigin(origin))
   )
   const middleIndex = Math.min(5, list.length)
   pinned.forEach((project, index) => {
@@ -168,17 +169,17 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
   const projects = useMemo(() => {
     const curatedBoostByOrigin = new Map(
       CURATED_PROJECTS.map((project) => [
-        project.origin,
+        normalizeOrigin(project.origin),
         { trending: project.trendingBoost, rising: project.risingBoost }
       ])
     )
     const curatedTierByOrigin = new Map(
-      CURATED_PROJECTS.map((project) => [project.origin, inferTierFromTags(project.tags)] as const)
+      CURATED_PROJECTS.map((project) => [normalizeOrigin(project.origin), inferTierFromTags(project.tags)] as const)
     )
-    const statsByOrigin = new Map(siteStats.map((stats) => [stats.origin, stats]))
+    const statsByOrigin = new Map(siteStats.map((stats) => [normalizeOrigin(stats.origin), stats]))
     const dynamicProjects = buildDynamicProjects(virtualUsers)
     const dynamicProjectsWithStats = dynamicProjects.map((project) => {
-      const stats = statsByOrigin.get(project.origin)
+      const stats = statsByOrigin.get(normalizeOrigin(project.origin))
       if (!stats) {
         return {
           ...project,
@@ -201,11 +202,12 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
         tier: inferTierFromTags(project.tags)
       }
     })
-    const byOrigin = new Set(dynamicProjectsWithStats.map((project) => project.origin))
+    const byOrigin = new Set(dynamicProjectsWithStats.map((project) => normalizeOrigin(project.origin)))
     const merged = [...dynamicProjectsWithStats]
 
     siteStats.forEach((stats) => {
-      if (!byOrigin.has(stats.origin)) {
+      const normalizedOrigin = normalizeOrigin(stats.origin)
+      if (!byOrigin.has(normalizedOrigin)) {
         const baseProject: Omit<LeaderboardProject, 'hotScore'> = {
           id: stats.origin,
           name: stats.title?.trim() || getHostLabel(stats.origin),
@@ -222,21 +224,22 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
           hotScore: getHotScore(baseProject),
           tier: inferTierFromTags(baseProject.tags)
         })
-        byOrigin.add(stats.origin)
+        byOrigin.add(normalizedOrigin)
       }
     })
 
     CURATED_PROJECTS.forEach((curated) => {
       const baseProject = getCuratedBaseProject(curated)
-      if (!byOrigin.has(baseProject.origin)) {
+      const normalizedOrigin = normalizeOrigin(baseProject.origin)
+      if (!byOrigin.has(normalizedOrigin)) {
         merged.push({
           ...baseProject,
           hotScore: getHotScore(baseProject),
-          tier: curatedTierByOrigin.get(baseProject.origin) ?? inferTierFromTags(baseProject.tags)
+          tier: curatedTierByOrigin.get(normalizedOrigin) ?? inferTierFromTags(baseProject.tags)
         })
-        byOrigin.add(baseProject.origin)
+        byOrigin.add(normalizedOrigin)
       } else {
-        const existingIndex = merged.findIndex((project) => project.origin === baseProject.origin)
+        const existingIndex = merged.findIndex((project) => normalizeOrigin(project.origin) === normalizedOrigin)
         if (existingIndex !== -1) {
           const existing = merged[existingIndex]
           const normalized: Omit<LeaderboardProject, 'hotScore'> = {
@@ -251,7 +254,7 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
           merged[existingIndex] = {
             ...normalized,
             hotScore: getHotScore(normalized),
-            tier: curatedTierByOrigin.get(baseProject.origin) ?? inferTierFromTags(normalized.tags)
+            tier: curatedTierByOrigin.get(normalizedOrigin) ?? inferTierFromTags(normalized.tags)
           }
         }
       }
@@ -261,7 +264,7 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
       const ranked = merged
         .map((project) => {
           const freshnessScore = Math.max(0, 60 - Math.floor((Date.now() - project.lastActivityAt) / (1000 * 60 * 5)))
-          const curatedBoost = curatedBoostByOrigin.get(project.origin)?.rising ?? 0
+          const curatedBoost = curatedBoostByOrigin.get(normalizeOrigin(project.origin))?.rising ?? 0
           const risingScore = Math.round(
             freshnessScore + project.activeUsers * 3 + project.messages24h / 18 + curatedBoost
           )
@@ -278,7 +281,7 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
     const ranked = merged
       .map((project) => ({
         ...project,
-        hotScore: project.hotScore + (curatedBoostByOrigin.get(project.origin)?.trending ?? 0)
+        hotScore: project.hotScore + (curatedBoostByOrigin.get(normalizeOrigin(project.origin))?.trending ?? 0)
       }))
       .toSorted((a, b) => b.hotScore - a.hotScore)
       .slice(0, 12)

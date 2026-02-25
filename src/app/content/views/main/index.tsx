@@ -11,6 +11,7 @@ import ChatRoomDomain from '@/domain/ChatRoom'
 import MessageListDomain, { MessageType } from '@/domain/MessageList'
 import VirtualRoomDomain from '@/domain/VirtualRoom'
 import Leaderboard from './leaderboard'
+import LeaderboardFooter from './leaderboard-footer'
 import { cn } from '@/utils'
 
 export type MainTab = 'chat' | 'trending' | 'new-rising'
@@ -60,12 +61,15 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
 
   return (
     <div className="grid h-full grid-rows-[auto_1fr] overflow-hidden">
-      <div className="grid grid-cols-3 border-b bg-white/90 px-3 py-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/90">
+      <div className="mx-3 mt-2 grid grid-cols-3 gap-1 rounded-xl border border-white/45 bg-white/55 p-1 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/55">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => onTabChange('chat')}
-          className={cn('h-8 rounded-lg text-xs', activeTab === 'chat' && 'bg-slate-100 dark:bg-slate-800')}
+          className={cn(
+            'h-8 rounded-lg text-xs font-medium text-slate-600 transition-colors dark:text-slate-200',
+            activeTab === 'chat' && 'bg-white/85 text-slate-900 shadow-sm dark:bg-slate-800/80 dark:text-white'
+          )}
         >
           Chat
         </Button>
@@ -74,7 +78,10 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
           size="sm"
           onClick={() => onTabChange('trending')}
           disabled={!leaderboardEnabled}
-          className={cn('h-8 rounded-lg text-xs', activeTab === 'trending' && 'bg-slate-100 dark:bg-slate-800')}
+          className={cn(
+            'h-8 rounded-lg text-xs font-medium text-slate-600 transition-colors dark:text-slate-200',
+            activeTab === 'trending' && 'bg-white/85 text-slate-900 shadow-sm dark:bg-slate-800/80 dark:text-white'
+          )}
         >
           Trending
         </Button>
@@ -83,7 +90,10 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
           size="sm"
           onClick={() => onTabChange('new-rising')}
           disabled={!leaderboardEnabled}
-          className={cn('h-8 rounded-lg text-xs', activeTab === 'new-rising' && 'bg-slate-100 dark:bg-slate-800')}
+          className={cn(
+            'h-8 rounded-lg text-xs font-medium text-slate-600 transition-colors dark:text-slate-200',
+            activeTab === 'new-rising' && 'bg-white/85 text-slate-900 shadow-sm dark:bg-slate-800/80 dark:text-white'
+          )}
         >
           New & Rising
         </Button>
@@ -117,11 +127,14 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
           <TypingIndicator />
         </MessageList>
       ) : (
-        <Leaderboard
-          virtualUsers={virtualUserList}
-          siteStats={siteStats}
-          mode={activeTab === 'trending' ? 'trending' : 'new-rising'}
-        />
+        <div className="grid min-h-0 grid-rows-[1fr_auto]">
+          <Leaderboard
+            virtualUsers={virtualUserList}
+            siteStats={siteStats}
+            mode={activeTab === 'trending' ? 'trending' : 'new-rising'}
+          />
+          <LeaderboardFooter />
+        </div>
       )}
     </div>
   )

@@ -47,24 +47,24 @@ const MessageItem: FC<MessageItemProps> = (props) => {
     <div
       data-index={props.index}
       className={cn(
-        'box-border grid grid-cols-[auto_1fr] gap-x-2 px-4  first:pt-4 last:pb-4 dark:text-slate-50',
+        'mx-2 mb-2 box-border grid grid-cols-[auto_1fr] gap-x-2 rounded-xl border border-white/40 bg-white/65 px-3 py-2 shadow-sm backdrop-blur-md first:mt-2 last:mb-2 dark:border-white/10 dark:bg-slate-800/55 dark:text-slate-50',
         props.className
       )}
     >
-      <Avatar>
+      <Avatar className="mt-0.5 border border-white/40 shadow-sm dark:border-white/10">
         <AvatarImage src={props.data.userAvatar} className="size-full" alt="avatar" />
         <AvatarFallback>{props.data.username.at(0)}</AvatarFallback>
       </Avatar>
       <div className="overflow-hidden">
         <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 leading-none">
-          <div className="truncate text-sm font-semibold text-slate-600 dark:text-slate-50">{props.data.username}</div>
-          <FormatDate className="text-xs text-slate-400 dark:text-slate-100" date={props.data.sendTime}></FormatDate>
+          <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-50">{props.data.username}</div>
+          <FormatDate className="text-xs text-slate-500 dark:text-slate-300" date={props.data.sendTime}></FormatDate>
         </div>
         <div>
-          <div className="pb-2">
+          <div className="pb-2 pt-1">
             <Markdown>{content}</Markdown>
           </div>
-          <div className="grid grid-flow-col justify-end gap-x-2 leading-none dark:text-slate-600">
+          <div className="grid grid-flow-col justify-end gap-x-2 leading-none">
             <LikeButton
               checked={props.like}
               onChange={(checked) => handleLikeChange(checked)}

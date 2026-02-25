@@ -378,12 +378,12 @@ const Footer: FC = () => {
   const root = getRootNode()
 
   return (
-    <div className="relative grid gap-y-2 rounded-b-xl px-4 pb-4 pt-2 before:pointer-events-none before:absolute before:inset-x-4 before:-top-2 before:h-2 before:bg-gradient-to-t before:from-slate-50 before:from-30%  before:to-transparent dark:bg-slate-900 dark:before:from-slate-900">
+    <div className="relative mx-3 mb-3 grid gap-y-2 rounded-2xl border border-white/45 bg-white/50 px-3 pb-3 pt-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/55">
       <Presence present={autoCompleteListShow}>
         <Portal
           container={root}
           ref={shareAutoCompleteListRef}
-          className="fixed z-infinity w-36 -translate-y-full overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="fixed z-infinity w-36 -translate-y-full overflow-hidden rounded-lg border border-white/45 bg-white/80 text-popover-foreground shadow-md backdrop-blur-xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 dark:border-white/10 dark:bg-slate-900/85"
           style={{ left: `min(${x}px, 100vw - 160px)`, top: `${y}px` }}
         >
           <ScrollArea className="max-h-[204px] min-h-9 p-1" ref={setScrollParentRef}>
@@ -434,9 +434,13 @@ const Footer: FC = () => {
       <div className="flex items-center">
         <EmojiButton onSelect={handleInjectEmoji}></EmojiButton>
         <ImageButton disabled={inputLoading} onSelect={handleInjectImage}></ImageButton>
-        <Button className="ml-auto" size="sm" onClick={handleSend}>
+        <Button
+          className="ml-auto rounded-lg border border-white/40 bg-white/80 text-slate-700 shadow-sm backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:bg-slate-700/80"
+          size="sm"
+          onClick={handleSend}
+        >
           <span className="mr-2">Send</span>
-          <CornerDownLeftIcon className="text-slate-400" size={12}></CornerDownLeftIcon>
+          <CornerDownLeftIcon className="text-slate-500 dark:text-slate-300" size={12}></CornerDownLeftIcon>
         </Button>
       </div>
     </div>

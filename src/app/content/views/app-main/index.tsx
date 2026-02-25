@@ -36,7 +36,7 @@ const AppMain: FC<AppMainProps> = ({ children, className }) => {
           initial={{ opacity: 0, y: 10, x: isOnRightSide ? '-100%' : '0' }}
           animate={{ opacity: 1, y: 0, x: isOnRightSide ? '-100%' : '0' }}
           exit={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.3, ease: 'linear' }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
           onAnimationEnd={() => setAnimationComplete(true)}
           onAnimationStart={() => setAnimationComplete(false)}
           style={{
@@ -45,7 +45,7 @@ const AppMain: FC<AppMainProps> = ({ children, className }) => {
             bottom: `calc(100vh - ${y}px + 22px)`
           }}
           className={cn(
-            `fixed inset-y-10 right-10 z-infinity mb-0 mt-auto box-border grid max-h-[min(calc(100vh_-60px),_1000px)] min-h-[375px] grid-flow-col grid-rows-[auto_1fr_auto] rounded-xl bg-slate-50 dark:bg-slate-950 font-sans shadow-2xl`,
+            `fixed inset-y-10 right-10 z-infinity mb-0 mt-auto box-border grid max-h-[min(calc(100vh_-60px),_1000px)] min-h-[375px] grid-flow-col grid-rows-[auto_1fr_auto] overflow-hidden rounded-2xl border border-slate-200/90 bg-[#dbe3ea] font-sans shadow-[0_24px_90px_-38px_rgba(15,23,42,0.9)] dark:border-slate-600/90 dark:bg-gradient-to-br dark:from-[#0d1422] dark:via-[#111a2a] dark:to-[#172235]`,
             className,
             { 'transition-transform': isAnimationComplete }
           )}
@@ -54,7 +54,7 @@ const AppMain: FC<AppMainProps> = ({ children, className }) => {
           <div
             ref={setRef}
             className={cn(
-              'absolute inset-y-3 z-infinity w-1 dark:bg-slate-600 cursor-ew-resize rounded-xl bg-slate-100 opacity-0 shadow transition-opacity duration-200 ease-in hover:opacity-100',
+              'absolute inset-y-3 z-infinity w-1 cursor-ew-resize rounded-xl bg-slate-300/65 opacity-0 shadow transition-opacity duration-200 ease-in hover:opacity-100 dark:bg-slate-600/85',
               isOnRightSide ? '-left-0.5' : '-right-0.5'
             )}
           ></div>

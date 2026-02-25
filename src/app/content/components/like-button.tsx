@@ -35,8 +35,8 @@ const LikeButton: FC<LikeButtonProps> & { Icon: FC<LikeButtonIconProps> } = ({
       onClick={handleClick}
       variant="secondary"
       className={cn(
-        'grid items-center overflow-hidden rounded-full leading-none transition-all select-none dark:bg-slate-600',
-        checked ? 'text-orange-500' : 'text-slate-500 dark:text-slate-100',
+        'grid select-none items-center overflow-hidden rounded-full border border-white/40 bg-white/70 leading-none shadow-sm transition-all hover:bg-white/85 dark:border-white/10 dark:bg-slate-800/70 dark:hover:bg-slate-700/80',
+        checked ? 'text-orange-500' : 'text-slate-500 dark:text-slate-200',
         count ? 'grid-cols-[auto_1fr] gap-x-1' : 'grid-cols-[auto_0fr] gap-x-0'
       )}
       size="xs"

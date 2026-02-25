@@ -68,9 +68,9 @@ const Header: FC = () => {
   const negativeSignals = riskAssessment.reasons.filter((reason) => reason.impact < 0).length
 
   return (
-    <div className="relative z-10 grid h-16 grid-flow-col grid-cols-[auto_1fr] items-center justify-between rounded-t-xl bg-white px-4 backdrop-blur-lg dark:bg-slate-950">
+    <div className="relative z-10 mx-3 mt-3 grid h-16 grid-flow-col grid-cols-[auto_1fr] items-center justify-between rounded-2xl border border-white/45 bg-white/60 px-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60">
       {web3.isWeb3Site && (
-        <span className="absolute right-3 top-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/55 px-2 py-1 text-[9px] font-medium leading-none text-slate-700 shadow-xs ring-1 ring-black/5 backdrop-blur-sm dark:bg-slate-900/55 dark:text-slate-100 dark:ring-white/10">
+        <span className="absolute right-3 top-1.5 inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-white/75 px-2 py-1 text-[9px] font-medium leading-none text-slate-700 shadow-xs backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100">
           <span aria-hidden className="opacity-90">
             {getPlatformIcon(web3.platform)}
           </span>
@@ -97,13 +97,16 @@ const Header: FC = () => {
         <div className="flex items-center gap-2">
           <HoverCard>
             <HoverCardTrigger asChild>
-              <Button className="ml-[5px] overflow-visible rounded-md p-0 -mb-0" variant="link">
+              <Button
+                className="mb-0 ml-[5px] overflow-visible rounded-md p-0 text-slate-700 hover:text-slate-900 dark:text-slate-100 dark:hover:text-white"
+                variant="link"
+              >
                 <span className="truncate text-base font-semibold text-slate-600 dark:text-slate-50">
                   {siteInfo.hostname.replace(/^www\./i, '')}
                 </span>
               </Button>
             </HoverCardTrigger>
-            <HoverCardContent className="w-80 rounded-lg p-0">
+            <HoverCardContent className="w-80 rounded-lg border border-white/45 bg-white/85 p-0 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
               <ScrollArea
                 type="scroll"
                 className="max-h-96 min-h-[72px] p-2"
@@ -200,7 +203,7 @@ const Header: FC = () => {
                 </div>
               </Button>
             </HoverCardTrigger>
-            <HoverCardContent className="w-36 rounded-lg p-0">
+            <HoverCardContent className="w-36 rounded-lg border border-white/45 bg-white/85 p-0 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
               <ScrollArea type="scroll" className="max-h-[204px] min-h-9 p-1" ref={setChatUserListScrollParentRef}>
                 <Virtuoso
                   data={chatUserList}
@@ -237,11 +240,14 @@ const Header: FC = () => {
           </HoverCard>
           <HoverCard openDelay={120} closeDelay={80}>
             <HoverCardTrigger asChild>
-              <Button className="h-auto rounded px-0 py-0 text-[8px] leading-none hover:no-underline" variant="link">
+              <Button
+                className="h-auto rounded px-0 py-0 text-[8px] leading-none text-slate-600 hover:no-underline dark:text-slate-200"
+                variant="link"
+              >
                 <span className="text-slate-500 dark:text-slate-100">Score {riskAssessment.score}/100</span>
               </Button>
             </HoverCardTrigger>
-            <HoverCardContent className="w-72 p-2">
+            <HoverCardContent className="w-72 rounded-lg border border-white/45 bg-white/85 p-2 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
               <div className={cn('rounded-lg border p-2.5', riskToneClass)}>
                 <div className="flex items-start justify-between">
                   <div>

@@ -14,7 +14,13 @@ const SocialLinks: FC<SocialLinksProps> = ({ siteInfo }) => {
       {siteInfo.twitter && (
         <HoverCard openDelay={120} closeDelay={80}>
           <HoverCardTrigger asChild>
-            <Button asChild variant="ghost" size="xs" aria-label="Twitter">
+            <Button
+              asChild
+              variant="ghost"
+              size="xs"
+              aria-label="Twitter"
+              className="rounded-full border border-white/45 bg-white/70 text-slate-600 backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-200"
+            >
               <a href={siteInfo.twitter} target="_blank" rel="noopener noreferrer">
                 <TwitterIcon className="size-3" />
               </a>
@@ -26,7 +32,13 @@ const SocialLinks: FC<SocialLinksProps> = ({ siteInfo }) => {
       {siteInfo.telegram && (
         <HoverCard openDelay={120} closeDelay={80}>
           <HoverCardTrigger asChild>
-            <Button asChild variant="ghost" size="xs" aria-label="Telegram">
+            <Button
+              asChild
+              variant="ghost"
+              size="xs"
+              aria-label="Telegram"
+              className="rounded-full border border-white/45 bg-white/70 text-slate-600 backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-200"
+            >
               <a href={siteInfo.telegram} target="_blank" rel="noopener noreferrer">
                 <SendIcon className="size-3" />
               </a>
@@ -38,7 +50,13 @@ const SocialLinks: FC<SocialLinksProps> = ({ siteInfo }) => {
       {siteInfo.discord && (
         <HoverCard openDelay={120} closeDelay={80}>
           <HoverCardTrigger asChild>
-            <Button asChild variant="ghost" size="xs" aria-label="Discord">
+            <Button
+              asChild
+              variant="ghost"
+              size="xs"
+              aria-label="Discord"
+              className="rounded-full border border-white/45 bg-white/70 text-slate-600 backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-200"
+            >
               <a href={siteInfo.discord} target="_blank" rel="noopener noreferrer">
                 <DiscIcon className="size-3" />
               </a>

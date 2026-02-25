@@ -202,9 +202,9 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
   }, [virtualUsers, siteStats, mode])
 
   return (
-    <ScrollArea className="h-full bg-gradient-to-b from-slate-50 to-white px-3 pb-3 dark:from-slate-900 dark:to-slate-950">
-      <div className="space-y-2 py-3">
-        <div className="rounded-lg border border-slate-200 bg-white/90 p-2.5 dark:border-slate-700 dark:bg-slate-900/70">
+    <ScrollArea className="mx-3 mt-2 h-full min-h-0 overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/40">
+      <div className="space-y-2 p-2 pb-4">
+        <div className="rounded-lg border border-slate-200 bg-white/90 p-2.5 dark:border-white/10 dark:bg-slate-800/55 dark:backdrop-blur-md">
           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
             <FlameIcon size={13} className="text-orange-500" />
             <span>{mode === 'trending' ? 'Global Trending Projects' : 'New & Rising Projects'}</span>
@@ -219,7 +219,7 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
         {projects.map((project, index) => (
           <div
             key={project.id}
-            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900"
+            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300 dark:border-white/10 dark:bg-slate-800/55 dark:backdrop-blur-md dark:hover:border-white/20 dark:hover:bg-slate-800/70"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -229,7 +229,7 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
                       'inline-flex min-w-6 items-center justify-center rounded-md px-1.5 py-0.5 text-xs font-semibold',
                       index < 3
                         ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-700/80 dark:text-slate-300'
                     )}
                   >
                     #{index + 1}
@@ -278,21 +278,21 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
               ))}
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-2xs text-slate-500 dark:text-slate-400">
-              <div className="rounded-md bg-slate-100 px-2 py-1.5 dark:bg-slate-800/80">
+              <div className="rounded-md bg-slate-100 px-2 py-1.5 dark:bg-slate-700/65">
                 <div className="mb-0.5 flex items-center gap-1">
                   <UsersIcon size={10} />
                   <span>Active</span>
                 </div>
                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-100">{project.activeUsers}</div>
               </div>
-              <div className="rounded-md bg-slate-100 px-2 py-1.5 dark:bg-slate-800/80">
+              <div className="rounded-md bg-slate-100 px-2 py-1.5 dark:bg-slate-700/65">
                 <div className="mb-0.5 flex items-center gap-1">
                   <MessageCircleIcon size={10} />
                   <span>24h Msg</span>
                 </div>
                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-100">{project.messages24h}</div>
               </div>
-              <div className="rounded-md bg-slate-100 px-2 py-1.5 dark:bg-slate-800/80">
+              <div className="rounded-md bg-slate-100 px-2 py-1.5 dark:bg-slate-700/65">
                 <div className="mb-0.5 flex items-center gap-1">
                   <TimerIcon size={10} />
                   <span>Last</span>

@@ -22,10 +22,10 @@ const TypingIndicator = () => {
   }
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 text-sm text-slate-500 dark:text-slate-400">
+    <div className="mx-3 mb-2 flex items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-3 py-2 text-sm text-slate-600 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-slate-800/55 dark:text-slate-300">
       <div className="flex -space-x-1">
         {typingUsers.slice(0, 3).map((user) => (
-          <Avatar key={user.userId} className="size-5 border-2 border-white dark:border-slate-900">
+          <Avatar key={user.userId} className="size-5 border-2 border-white/85 dark:border-slate-900">
             <AvatarImage src={user.userAvatar} alt={user.username} />
             <AvatarFallback className="text-xs">{user.username.at(0)}</AvatarFallback>
           </Avatar>

@@ -169,7 +169,7 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
         onClick={handleIconClick}
         onDragStart={(e) => e.preventDefault()}
         onContextMenu={handleToggleMenu}
-        className="relative z-20 size-14 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-hidden after:absolute after:-inset-0.5 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),theme(colors.slate.500)_0%,theme(colors.white)_10%,theme(colors.slate.500)_20%)]"
+        className="relative z-20 size-14 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-hidden after:absolute after:-inset-1 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),#ff0040_0%,#ff7a00_12.5%,#ffe600_25%,#28ff7a_37.5%,#00d4ff_50%,#2f6bff_62.5%,#9b4dff_75%,#ff2fd6_87.5%,#ff0040_100%)]"
       >
         <AnimatePresence>
           {hasUnreadQuery && (

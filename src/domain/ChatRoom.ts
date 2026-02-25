@@ -850,11 +850,7 @@ const ChatRoomDomain = Remesh.domain({
         const onRoomError$ = fromEventPattern<Error>(chatRoomExtern.onError).pipe(
           map((error) => {
             console.error(error)
-            return [
-              SetConnectionStateCommand('error'),
-              JoinStatusModule.command.SetInitialCommand(),
-              OnErrorEvent(error)
-            ]
+            return [SetConnectionStateCommand('error'), OnErrorEvent(error)]
           })
         )
         return onRoomError$

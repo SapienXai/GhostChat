@@ -65,7 +65,6 @@ class ChatRoom extends EventHub {
   }
 
   sendMessage(message: RoomMessage, id?: string | string[]) {
-    const requiresPeer = message.type === 'Text' || message.type === 'Like' || message.type === 'Hate'
     if (!this.room) {
       const timeout = setTimeout(() => {
         this.emit('error', new Error('Cannot send message: chat room is not connected yet'))
@@ -74,18 +73,12 @@ class ChatRoom extends EventHub {
         clearTimeout(timeout)
         if (!this.room) {
           this.emit('error', new Error('Room not joined'))
-        } else if (requiresPeer && this.room.peers.length === 0) {
-          this.emit('error', new Error('No peer connected in this room yet'))
         } else {
           this.room.send(JSONR.stringify(message)!, id)
         }
       })
     } else {
-      if (requiresPeer && this.room.peers.length === 0) {
-        this.emit('error', new Error('No peer connected in this room yet'))
-      } else {
-        this.room.send(JSONR.stringify(message)!, id)
-      }
+      this.room.send(JSONR.stringify(message)!, id)
     }
     return this
   }

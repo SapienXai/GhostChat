@@ -12,7 +12,7 @@ import AppStatusDomain from '@/domain/AppStatus'
 import { messenger } from '@/messenger'
 import useDraggable from '@/hooks/useDraggable'
 import useWindowResize from '@/hooks/useWindowResize'
-import FloatingIconVideo from '@/assets/videos/ghostchat_transparent.webm'
+import FloatingIconVideoAsset from '@/assets/videos/ghostchat_transparent.webm'
 
 export interface AppButtonProps {
   className?: string
@@ -32,6 +32,18 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const dragStartRef = useRef<{ x: number; y: number } | null>(null)
   const draggedRef = useRef(false)
+  const resolveRuntimeVideoUrl = () => {
+    const browserRuntime = (globalThis as any).browser?.runtime
+    const browserRuntimeUrl = browserRuntime?.getURL?.('ghostchat_transparent.webm')
+    if (browserRuntimeUrl) return browserRuntimeUrl as string
+
+    const chromeRuntime = (globalThis as any).chrome?.runtime
+    const chromeRuntimeUrl = chromeRuntime?.getURL?.('ghostchat_transparent.webm')
+    if (chromeRuntimeUrl) return chromeRuntimeUrl as string
+
+    return ''
+  }
+  const [floatingVideoUrl, setFloatingVideoUrl] = useState(resolveRuntimeVideoUrl() || FloatingIconVideoAsset)
 
   const {
     x,
@@ -190,16 +202,20 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
 
         <div className="relative z-15 h-full w-full rounded-full p-0.5">
           <video
+            src={floatingVideoUrl}
             autoPlay
             loop
             muted
             playsInline
             preload="auto"
             draggable={false}
+            onError={() => {
+              if (floatingVideoUrl !== FloatingIconVideoAsset) {
+                setFloatingVideoUrl(FloatingIconVideoAsset)
+              }
+            }}
             className="h-full w-full rounded-full object-cover pointer-events-none select-none"
-          >
-            <source src={FloatingIconVideo} type="video/webm" />
-          </video>
+          />
         </div>
       </Button>
     </div>

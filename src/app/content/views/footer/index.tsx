@@ -172,12 +172,6 @@ const Footer: FC = () => {
   }
 
   const handleSend = async () => {
-    if (!chatRoomJoinIsFinished) {
-      send(toastDomain.command.WarningCommand('Chat connection is not ready yet. Please wait a moment.'))
-      inputRef.current?.focus()
-      return
-    }
-
     const currentMessage = inputRef.current?.value ?? message
     if (!`${currentMessage}`.trim()) {
       inputRef.current?.focus()

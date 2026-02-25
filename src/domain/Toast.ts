@@ -29,6 +29,18 @@ const ToastDomain = Remesh.domain({
           fromEvent(chatRoomDomain.event.OnErrorEvent),
           fromEvent(virtualRoomDomain.event.OnErrorEvent)
         ).pipe(
+          filter((error) => {
+            const message = (error?.message ?? '').toLowerCase()
+            const silentErrorPatterns = [
+              'no peer connected',
+              'room not joined',
+              'cannot send message',
+              'chat connection timeout',
+              'signaling-connect-error',
+              'signaling-open-timeout'
+            ]
+            return !silentErrorPatterns.some((pattern) => message.includes(pattern))
+          }),
           map((error) => {
             return toastModule.command.ErrorCommand(error.message)
           })

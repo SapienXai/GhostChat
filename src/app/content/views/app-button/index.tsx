@@ -8,12 +8,11 @@ import { EVENT } from '@/constants/event'
 import UserInfoDomain from '@/domain/UserInfo'
 import useTriggerAway from '@/hooks/useTriggerAway'
 import { checkDarkMode, cn } from '@/utils'
-import LogoW from '@/assets/images/logoW.png'
-import LogoB from '@/assets/images/logoB.png'
 import AppStatusDomain from '@/domain/AppStatus'
 import { messenger } from '@/messenger'
 import useDraggable from '@/hooks/useDraggable'
 import useWindowResize from '@/hooks/useWindowResize'
+import FloatingIconVideo from '@/assets/videos/ghostchat_transparent.webm'
 
 export interface AppButtonProps {
   className?: string
@@ -132,12 +131,12 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
             <Button
               onClick={handleSwitchTheme}
               variant="outline"
-              className="relative size-10 overflow-hidden rounded-full p-0 shadow dark:border-slate-600"
+              className="relative size-12 overflow-hidden rounded-full p-0 shadow dark:border-slate-600"
             >
               <div
                 className={cn(
-                  'absolute grid grid-rows-[repeat(2,minmax(0,2.5rem))] w-full justify-center items-center transition-all duration-300 hover:bg-accent dark:hover:bg-accent',
-                  isDarkMode ? 'top-0' : '-top-10',
+                  'absolute grid grid-rows-[repeat(2,minmax(0,3rem))] w-full justify-center items-center transition-all duration-300 hover:bg-accent dark:hover:bg-accent',
+                  isDarkMode ? 'top-0' : '-top-12',
                   isDarkMode ? 'bg-slate-950 text-white' : 'bg-white text-orange-400'
                 )}
               >
@@ -149,14 +148,14 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
             <Button
               onClick={handleOpenOptionsPage}
               variant="outline"
-              className="size-10 rounded-full p-0 dark:bg-background shadow dark:text-foreground dark:border-slate-600 dark:hover:bg-accent"
+              className="size-12 rounded-full p-0 dark:bg-background shadow dark:text-foreground dark:border-slate-600 dark:hover:bg-accent"
             >
               <SettingsIcon className="size-5" />
             </Button>
             <Button
               onMouseDown={handleHandMouseDown}
               variant="outline"
-              className="size-10 cursor-grab dark:bg-background rounded-full p-0 dark:text-foreground shadow dark:border-slate-600 dark:hover:bg-accent"
+              className="size-12 cursor-grab dark:bg-background rounded-full p-0 dark:text-foreground shadow dark:border-slate-600 dark:hover:bg-accent"
             >
               <HandIcon className="size-5" />
             </Button>
@@ -170,7 +169,7 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
         onClick={handleIconClick}
         onDragStart={(e) => e.preventDefault()}
         onContextMenu={handleToggleMenu}
-        className="relative z-20 size-11 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-hidden after:absolute after:-inset-0.5 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),theme(colors.slate.500)_0%,theme(colors.white)_10%,theme(colors.slate.500)_20%)]"
+        className="relative z-20 size-14 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-hidden after:absolute after:-inset-0.5 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),theme(colors.slate.500)_0%,theme(colors.white)_10%,theme(colors.slate.500)_20%)]"
       >
         <AnimatePresence>
           {hasUnreadQuery && (
@@ -179,22 +178,28 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.1 }}
-              className="absolute -right-1 -top-1 z-30 flex size-5 items-center justify-center"
+              className="absolute -right-1 -top-1 z-30 flex size-7 items-center justify-center"
             >
               <span
                 className={cn('absolute inline-flex size-full animate-ping rounded-full opacity-75', 'bg-orange-400')}
               ></span>
-              <span className={cn('relative inline-flex size-3 rounded-full', 'bg-orange-500')}></span>
+              <span className={cn('relative inline-flex size-4 rounded-full', 'bg-orange-500')}></span>
             </motion.div>
           )}
         </AnimatePresence>
 
         <div className="relative z-15 h-full w-full rounded-full p-0.5">
-          <img
-            src={isDarkMode ? LogoB : LogoW}
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
             draggable={false}
             className="h-full w-full rounded-full object-cover pointer-events-none select-none"
-          />
+          >
+            <source src={FloatingIconVideo} type="video/webm" />
+          </video>
         </div>
       </Button>
     </div>

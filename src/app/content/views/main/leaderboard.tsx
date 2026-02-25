@@ -5,6 +5,7 @@ import type { RoomUser, SiteStats } from '@/domain/VirtualRoom'
 import { cn } from '@/utils'
 import { ExternalLinkIcon, FlameIcon, MessageCircleIcon, TimerIcon, UsersIcon } from 'lucide-react'
 import { type FC, useMemo } from 'react'
+import { CURATED_PROJECTS } from './curated-projects'
 
 interface LeaderboardProject {
   id: string
@@ -16,40 +17,12 @@ interface LeaderboardProject {
   messages24h: number
   lastActivityAt: number
   hotScore: number
+  tier?: ProjectTier
 }
 
-const FALLBACK_PROJECTS: Omit<LeaderboardProject, 'hotScore'>[] = [
-  {
-    id: 'fallback-uniswap',
-    name: 'Uniswap',
-    origin: 'https://app.uniswap.org',
-    description: 'DEX traders discussing pools, fees, and new token momentum.',
-    tags: ['DEX', 'Ethereum'],
-    activeUsers: 46,
-    messages24h: 482,
-    lastActivityAt: Date.now() - 4 * 60 * 1000
-  },
-  {
-    id: 'fallback-opensea',
-    name: 'OpenSea',
-    origin: 'https://opensea.io',
-    description: 'NFT collectors sharing mints, floor moves, and collection alerts.',
-    tags: ['NFT', 'Marketplace'],
-    activeUsers: 31,
-    messages24h: 308,
-    lastActivityAt: Date.now() - 8 * 60 * 1000
-  },
-  {
-    id: 'fallback-jupiter',
-    name: 'Jupiter',
-    origin: 'https://jup.ag',
-    description: 'Solana swap crowd talking routes, slippage, and token narratives.',
-    tags: ['Solana', 'Aggregator'],
-    activeUsers: 27,
-    messages24h: 244,
-    lastActivityAt: Date.now() - 12 * 60 * 1000
-  }
-]
+type ProjectTier = 'blue-chip' | 'established' | 'rising'
+const TIER_BADGE_LABELS = ['Blue Chip', 'Established', 'Rising'] as const
+const PINNED_MIDDLE_ORIGINS = ['https://coincollect.org/', 'https://questlayer.app/'] as const
 
 const getHostLabel = (origin: string) => {
   try {
@@ -82,6 +55,57 @@ const getTags = (origin: string) => {
   if (host.includes('jup') || host.includes('raydium')) return ['Solana', 'Trading']
   if (host.includes('aave') || host.includes('compound')) return ['Lending', 'DeFi']
   return ['Web3', 'Community']
+}
+
+const getTierLabel = (tier: ProjectTier) =>
+  ({
+    'blue-chip': 'Blue Chip',
+    established: 'Established',
+    rising: 'Rising'
+  })[tier]
+
+const getTierChipClassName = (tier: ProjectTier) =>
+  ({
+    'blue-chip':
+      'border-blue-200 bg-blue-50/80 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300',
+    established:
+      'border-slate-200 bg-slate-100/80 text-slate-700 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300',
+    rising:
+      'border-emerald-200 bg-emerald-50/80 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+  })[tier]
+
+const inferTierFromTags = (tags: string[]): ProjectTier => {
+  if (tags.some((tag) => tag.toLowerCase() === 'blue chip')) return 'blue-chip'
+  if (tags.some((tag) => tag.toLowerCase() === 'new & rising')) return 'rising'
+  return 'established'
+}
+
+const isTierBadgeLabel = (tag: string): tag is (typeof TIER_BADGE_LABELS)[number] =>
+  TIER_BADGE_LABELS.includes(tag as (typeof TIER_BADGE_LABELS)[number])
+
+const tierFromBadgeLabel = (tag: (typeof TIER_BADGE_LABELS)[number]): ProjectTier =>
+  (
+    ({
+      'Blue Chip': 'blue-chip',
+      Established: 'established',
+      Rising: 'rising'
+    }) as const
+  )[tag]
+
+const applyPinnedMiddleProjects = (projects: LeaderboardProject[], pool: LeaderboardProject[]) => {
+  const pinned = PINNED_MIDDLE_ORIGINS.map((origin) => pool.find((project) => project.origin === origin)).filter(
+    Boolean
+  ) as LeaderboardProject[]
+  if (pinned.length === 0) return projects
+
+  const list = projects.filter(
+    (project) => !PINNED_MIDDLE_ORIGINS.includes(project.origin as (typeof PINNED_MIDDLE_ORIGINS)[number])
+  )
+  const middleIndex = Math.min(5, list.length)
+  pinned.forEach((project, index) => {
+    list.splice(middleIndex + index, 0, project)
+  })
+  return list.slice(0, 12)
 }
 
 const buildDynamicProjects = (virtualUsers: RoomUser[]) => {
@@ -123,6 +147,17 @@ const buildDynamicProjects = (virtualUsers: RoomUser[]) => {
   })
 }
 
+const getCuratedBaseProject = (curated: (typeof CURATED_PROJECTS)[number]): Omit<LeaderboardProject, 'hotScore'> => ({
+  id: curated.id,
+  name: curated.name,
+  origin: curated.origin,
+  description: curated.description,
+  tags: curated.tags,
+  activeUsers: curated.activeUsers,
+  messages24h: curated.messages24h,
+  lastActivityAt: Date.now() - curated.lastActiveMinutesAgo * 60 * 1000
+})
+
 export interface LeaderboardProps {
   virtualUsers: RoomUser[]
   siteStats: SiteStats[]
@@ -131,12 +166,24 @@ export interface LeaderboardProps {
 
 const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) => {
   const projects = useMemo(() => {
+    const curatedBoostByOrigin = new Map(
+      CURATED_PROJECTS.map((project) => [
+        project.origin,
+        { trending: project.trendingBoost, rising: project.risingBoost }
+      ])
+    )
+    const curatedTierByOrigin = new Map(
+      CURATED_PROJECTS.map((project) => [project.origin, inferTierFromTags(project.tags)] as const)
+    )
     const statsByOrigin = new Map(siteStats.map((stats) => [stats.origin, stats]))
     const dynamicProjects = buildDynamicProjects(virtualUsers)
     const dynamicProjectsWithStats = dynamicProjects.map((project) => {
       const stats = statsByOrigin.get(project.origin)
       if (!stats) {
-        return project
+        return {
+          ...project,
+          tier: inferTierFromTags(project.tags)
+        }
       }
       return {
         ...project,
@@ -150,7 +197,8 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
           messages24h: Math.max(project.messages24h, stats.messages24h),
           activeUsers: Math.max(project.activeUsers, stats.activeUsers),
           lastActivityAt: Math.max(project.lastActivityAt, stats.lastActivityAt)
-        })
+        }),
+        tier: inferTierFromTags(project.tags)
       }
     })
     const byOrigin = new Set(dynamicProjectsWithStats.map((project) => project.origin))
@@ -171,24 +219,52 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
         }
         merged.push({
           ...baseProject,
-          hotScore: getHotScore(baseProject)
+          hotScore: getHotScore(baseProject),
+          tier: inferTierFromTags(baseProject.tags)
         })
         byOrigin.add(stats.origin)
       }
     })
 
-    FALLBACK_PROJECTS.forEach((project) => {
-      if (!byOrigin.has(project.origin)) {
-        merged.push({ ...project, hotScore: getHotScore(project) })
-        byOrigin.add(project.origin)
+    CURATED_PROJECTS.forEach((curated) => {
+      const baseProject = getCuratedBaseProject(curated)
+      if (!byOrigin.has(baseProject.origin)) {
+        merged.push({
+          ...baseProject,
+          hotScore: getHotScore(baseProject),
+          tier: curatedTierByOrigin.get(baseProject.origin) ?? inferTierFromTags(baseProject.tags)
+        })
+        byOrigin.add(baseProject.origin)
+      } else {
+        const existingIndex = merged.findIndex((project) => project.origin === baseProject.origin)
+        if (existingIndex !== -1) {
+          const existing = merged[existingIndex]
+          const normalized: Omit<LeaderboardProject, 'hotScore'> = {
+            ...existing,
+            name: existing.name || baseProject.name,
+            description: existing.description || baseProject.description,
+            tags: existing.tags?.length ? existing.tags : baseProject.tags,
+            activeUsers: Math.max(existing.activeUsers, baseProject.activeUsers),
+            messages24h: Math.max(existing.messages24h, baseProject.messages24h),
+            lastActivityAt: Math.max(existing.lastActivityAt, baseProject.lastActivityAt)
+          }
+          merged[existingIndex] = {
+            ...normalized,
+            hotScore: getHotScore(normalized),
+            tier: curatedTierByOrigin.get(baseProject.origin) ?? inferTierFromTags(normalized.tags)
+          }
+        }
       }
     })
 
     if (mode === 'new-rising') {
-      return merged
+      const ranked = merged
         .map((project) => {
           const freshnessScore = Math.max(0, 60 - Math.floor((Date.now() - project.lastActivityAt) / (1000 * 60 * 5)))
-          const risingScore = Math.round(freshnessScore + project.activeUsers * 3 + project.messages24h / 18)
+          const curatedBoost = curatedBoostByOrigin.get(project.origin)?.rising ?? 0
+          const risingScore = Math.round(
+            freshnessScore + project.activeUsers * 3 + project.messages24h / 18 + curatedBoost
+          )
           return {
             ...project,
             hotScore: risingScore
@@ -196,9 +272,17 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
         })
         .toSorted((a, b) => b.hotScore - a.hotScore)
         .slice(0, 12)
+      return applyPinnedMiddleProjects(ranked, merged)
     }
 
-    return merged.toSorted((a, b) => b.hotScore - a.hotScore).slice(0, 12)
+    const ranked = merged
+      .map((project) => ({
+        ...project,
+        hotScore: project.hotScore + (curatedBoostByOrigin.get(project.origin)?.trending ?? 0)
+      }))
+      .toSorted((a, b) => b.hotScore - a.hotScore)
+      .slice(0, 12)
+    return applyPinnedMiddleProjects(ranked, merged)
   }, [virtualUsers, siteStats, mode])
 
   return (
@@ -271,8 +355,18 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
             </div>
             <p className="mt-2 line-clamp-2 text-xs text-slate-600 dark:text-slate-300">{project.description}</p>
             <div className="mt-2 flex flex-wrap gap-1">
-              {project.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-2xs">
+              {[
+                getTierLabel(project.tier ?? 'established'),
+                ...project.tags.filter((tag) => !isTierBadgeLabel(tag))
+              ].map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  className={cn(
+                    'text-2xs',
+                    isTierBadgeLabel(tag) ? getTierChipClassName(tierFromBadgeLabel(tag)) : undefined
+                  )}
+                >
                   {tag}
                 </Badge>
               ))}

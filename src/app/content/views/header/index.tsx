@@ -24,6 +24,7 @@ const Header: FC = () => {
   const chatUserList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
   const virtualUserList = useRemeshQuery(virtualRoomDomain.query.UserListQuery())
   const awayUsers = useRemeshQuery(chatRoomDomain.query.AwayUsersQuery())
+  const connectionState = useRemeshQuery(chatRoomDomain.query.ConnectionStateQuery())
   const chatOnlineCount = chatUserList.length
 
   const virtualOnlineGroup = virtualUserList
@@ -66,6 +67,24 @@ const Header: FC = () => {
         : 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
   const positiveSignals = riskAssessment.reasons.filter((reason) => reason.impact > 0).length
   const negativeSignals = riskAssessment.reasons.filter((reason) => reason.impact < 0).length
+  const connectionDotClass =
+    connectionState === 'connected'
+      ? 'bg-emerald-500'
+      : connectionState === 'connecting'
+        ? 'bg-amber-500'
+        : connectionState === 'error'
+          ? 'bg-rose-500'
+          : 'bg-slate-400'
+  const connectionLabel =
+    connectionState === 'connected'
+      ? chatOnlineCount > 1
+        ? 'P2P Ready'
+        : 'P2P Waiting Peer'
+      : connectionState === 'connecting'
+        ? 'P2P Connecting'
+        : connectionState === 'error'
+          ? 'P2P Error'
+          : 'P2P Offline'
 
   return (
     <div className="relative z-10 mx-3 mt-3 grid h-16 grid-flow-col grid-cols-[auto_1fr] items-center justify-between rounded-2xl border border-white/45 bg-white/60 px-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60">
@@ -238,6 +257,12 @@ const Header: FC = () => {
               </ScrollArea>
             </HoverCardContent>
           </HoverCard>
+          <span className="inline-flex items-center gap-x-1 text-[8px] leading-none text-slate-500 dark:text-slate-100">
+            <span className="relative flex size-1">
+              <span className={cn('relative inline-flex size-full rounded-full', connectionDotClass)}></span>
+            </span>
+            <span>{connectionLabel}</span>
+          </span>
           <HoverCard openDelay={120} closeDelay={80}>
             <HoverCardTrigger asChild>
               <Button

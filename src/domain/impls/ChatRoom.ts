@@ -17,6 +17,7 @@ class ChatRoom extends EventHub {
   readonly roomId: string
   readonly peerId: string
   private room?: Room
+  private connectTimeout?: ReturnType<typeof setTimeout>
 
   constructor(config: Config) {
     super()
@@ -24,6 +25,7 @@ class ChatRoom extends EventHub {
     this.roomId = config.roomId
     this.peerId = config.peer.id
     this.joinRoom = this.joinRoom.bind(this)
+    this.onReady = this.onReady.bind(this)
     this.sendMessage = this.sendMessage.bind(this)
     this.onMessage = this.onMessage.bind(this)
     this.onJoinRoom = this.onJoinRoom.bind(this)
@@ -33,40 +35,64 @@ class ChatRoom extends EventHub {
   }
 
   joinRoom() {
+    this.startConnectTimeout()
     if (this.room) {
       this.room = this.peer.join(this.roomId)
+      this.handleReady()
     } else {
       if (this.peer.state === 'ready') {
         this.room = this.peer.join(this.roomId)
-        this.emit('action')
+        this.handleReady()
       } else {
-        this.peer!.on('open', () => {
+        this.peer.once('open', () => {
           this.room = this.peer.join(this.roomId)
-          this.emit('action')
+          this.handleReady()
         })
       }
     }
     return this
   }
 
-  sendMessage(message: RoomMessage, id?: string | string[]) {
+  onReady(callback: (roomId: string) => void) {
     if (!this.room) {
-      this.once('action', () => {
+      this.once('ready', () => {
+        callback(this.roomId)
+      })
+    } else {
+      callback(this.roomId)
+    }
+    return this
+  }
+
+  sendMessage(message: RoomMessage, id?: string | string[]) {
+    const requiresPeer = message.type === 'Text' || message.type === 'Like' || message.type === 'Hate'
+    if (!this.room) {
+      const timeout = setTimeout(() => {
+        this.emit('error', new Error('Cannot send message: chat room is not connected yet'))
+      }, 3000)
+      this.once('ready', () => {
+        clearTimeout(timeout)
         if (!this.room) {
           this.emit('error', new Error('Room not joined'))
+        } else if (requiresPeer && this.room.peers.length === 0) {
+          this.emit('error', new Error('No peer connected in this room yet'))
         } else {
           this.room.send(JSONR.stringify(message)!, id)
         }
       })
     } else {
-      this.room.send(JSONR.stringify(message)!, id)
+      if (requiresPeer && this.room.peers.length === 0) {
+        this.emit('error', new Error('No peer connected in this room yet'))
+      } else {
+        this.room.send(JSONR.stringify(message)!, id)
+      }
     }
     return this
   }
 
   onMessage(callback: (message: RoomMessage) => void) {
     if (!this.room) {
-      this.once('action', () => {
+      this.once('ready', () => {
         if (!this.room) {
           this.emit('error', new Error('Room not joined'))
         } else {
@@ -81,7 +107,7 @@ class ChatRoom extends EventHub {
 
   onJoinRoom(callback: (id: string) => void) {
     if (!this.room) {
-      this.once('action', () => {
+      this.once('ready', () => {
         if (!this.room) {
           this.emit('error', new Error('Room not joined'))
         } else {
@@ -96,7 +122,7 @@ class ChatRoom extends EventHub {
 
   onLeaveRoom(callback: (id: string) => void) {
     if (!this.room) {
-      this.once('action', () => {
+      this.once('ready', () => {
         if (!this.room) {
           this.emit('error', new Error('Room not joined'))
         } else {
@@ -110,8 +136,9 @@ class ChatRoom extends EventHub {
   }
 
   leaveRoom() {
+    this.clearConnectTimeout()
     if (!this.room) {
-      this.once('action', () => {
+      this.once('ready', () => {
         if (!this.room) {
           this.emit('error', new Error('Room not joined'))
         } else {
@@ -129,6 +156,27 @@ class ChatRoom extends EventHub {
     this.peer?.on('error', (error) => callback(error))
     this.on('error', (error: Error) => callback(error))
     return this
+  }
+
+  private startConnectTimeout() {
+    this.clearConnectTimeout()
+    this.connectTimeout = setTimeout(() => {
+      if (!this.room) {
+        this.emit('error', new Error('Chat connection timeout: failed to establish P2P room'))
+      }
+    }, 7000)
+  }
+
+  private clearConnectTimeout() {
+    if (this.connectTimeout) {
+      clearTimeout(this.connectTimeout)
+      this.connectTimeout = undefined
+    }
+  }
+
+  private handleReady() {
+    this.clearConnectTimeout()
+    this.emit('ready', this.roomId)
   }
 }
 

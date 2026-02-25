@@ -5,6 +5,7 @@ export interface ChatRoom {
   readonly peerId: string
   readonly roomId: string
   joinRoom: () => ChatRoom
+  onReady: (callback: (roomId: string) => void) => ChatRoom
   sendMessage: (message: RoomMessage, id?: string | string[]) => ChatRoom
   onMessage: (callback: (message: RoomMessage) => void) => ChatRoom
   leaveRoom: () => ChatRoom
@@ -19,6 +20,9 @@ export const ChatRoomExtern = Remesh.extern<ChatRoom>({
     roomId: '',
     joinRoom: () => {
       throw new Error('"joinRoom" not implemented.')
+    },
+    onReady: () => {
+      throw new Error('"onReady" not implemented.')
     },
     sendMessage: () => {
       throw new Error('"sendMessage" not implemented.')

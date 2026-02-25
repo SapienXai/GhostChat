@@ -83,6 +83,7 @@ export type RoomMessage =
   | AwayMessage
 
 export type RoomUser = MessageUser & { peerIds: string[]; joinTime: number }
+export type ChatConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 const MessageUserSchema = {
   userId: v.string(),
@@ -189,6 +190,18 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.JoinStatusModule'
     })
 
+    const ConnectionStateState = domain.state<ChatConnectionState>({
+      name: 'Room.ConnectionStateState',
+      default: 'disconnected'
+    })
+
+    const ConnectionStateQuery = domain.query({
+      name: 'Room.ConnectionStateQuery',
+      impl: ({ get }) => {
+        return get(ConnectionStateState())
+      }
+    })
+
     const UserListState = domain.state<RoomUser[]>({
       name: 'Room.UserListState',
       default: []
@@ -263,6 +276,13 @@ const ChatRoomDomain = Remesh.domain({
 
     const JoinIsFinishedQuery = JoinStatusModule.query.IsFinishedQuery
 
+    const SetConnectionStateCommand = domain.command({
+      name: 'Room.SetConnectionStateCommand',
+      impl: (_, state: ChatConnectionState) => {
+        return [ConnectionStateState().new(state)]
+      }
+    })
+
     const JoinRoomCommand = domain.command({
       name: 'Room.JoinRoomCommand',
       impl: ({ get }) => {
@@ -285,9 +305,9 @@ const ChatRoomDomain = Remesh.domain({
                 receiveTime: Date.now()
               })
             : null,
-          JoinStatusModule.command.SetFinishedCommand(),
+          SetConnectionStateCommand('connecting'),
           JoinRoomEvent(chatRoomExtern.roomId),
-          SelfJoinRoomEvent(chatRoomExtern.roomId)
+          null
         ]
       }
     })
@@ -319,6 +339,7 @@ const ChatRoomDomain = Remesh.domain({
             type: 'delete',
             user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
           }),
+          SetConnectionStateCommand('disconnected'),
           JoinStatusModule.command.SetInitialCommand(),
           LeaveRoomEvent(chatRoomExtern.roomId),
           SelfLeaveRoomEvent(chatRoomExtern.roomId)
@@ -636,6 +657,22 @@ const ChatRoomDomain = Remesh.domain({
     })
 
     domain.effect({
+      name: 'Room.OnReadyEffect',
+      impl: () => {
+        const onReady$ = fromEventPattern<string>(chatRoomExtern.onReady).pipe(
+          map((roomId) => {
+            return [
+              SetConnectionStateCommand('connected'),
+              JoinStatusModule.command.SetFinishedCommand(),
+              SelfJoinRoomEvent(roomId)
+            ]
+          })
+        )
+        return onReady$
+      }
+    })
+
+    domain.effect({
       name: 'Room.OnJoinRoomEffect',
       impl: () => {
         const onJoinRoom$ = fromEventPattern<string>(chatRoomExtern.onJoinRoom).pipe(
@@ -813,7 +850,11 @@ const ChatRoomDomain = Remesh.domain({
         const onRoomError$ = fromEventPattern<Error>(chatRoomExtern.onError).pipe(
           map((error) => {
             console.error(error)
-            return OnErrorEvent(error)
+            return [
+              SetConnectionStateCommand('error'),
+              JoinStatusModule.command.SetInitialCommand(),
+              OnErrorEvent(error)
+            ]
           })
         )
         return onRoomError$
@@ -824,6 +865,7 @@ const ChatRoomDomain = Remesh.domain({
       query: {
         PeerIdQuery,
         UserListQuery,
+        ConnectionStateQuery,
         JoinIsFinishedQuery,
         TypingUsersQuery,
         AwayUsersQuery

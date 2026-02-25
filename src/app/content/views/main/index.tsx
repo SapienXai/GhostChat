@@ -127,7 +127,7 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
           <TypingIndicator />
         </MessageList>
       ) : (
-        <div className="grid min-h-0 grid-rows-[1fr_auto]">
+        <div className="grid min-h-0 grid-rows-[1fr_auto] gap-2">
           <Leaderboard
             virtualUsers={virtualUserList}
             siteStats={siteStats}

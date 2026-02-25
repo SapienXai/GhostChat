@@ -23,12 +23,10 @@ const MessageList: FC<MessageListProps> = ({ children }) => {
   }, [itemCount, followBottom])
 
   return (
-    <div
-      ref={scrollRef}
-      onScroll={handleScroll}
-      className="mx-3 my-2 h-full min-h-0 overflow-y-auto overscroll-none rounded-2xl border border-white/40 bg-white/45 shadow-inner backdrop-blur-xl dark:border-white/8 dark:bg-slate-900/45"
-    >
-      {renderedChildren}
+    <div className="mx-3 my-2 h-full min-h-0 overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-inner backdrop-blur-xl dark:border-white/8 dark:bg-slate-900/45">
+      <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto overscroll-none pb-3">
+        {renderedChildren}
+      </div>
     </div>
   )
 }

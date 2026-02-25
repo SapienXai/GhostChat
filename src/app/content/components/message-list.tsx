@@ -24,7 +24,7 @@ const MessageList: FC<MessageListProps> = ({ children }) => {
   return (
     <ScrollArea
       ref={setScrollParentRef}
-      className="mx-3 my-2 overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-inner backdrop-blur-xl dark:border-white/8 dark:bg-slate-900/45"
+      className="mx-3 my-2 h-full min-h-0 overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-inner backdrop-blur-xl dark:border-white/8 dark:bg-slate-900/45"
     >
       <Virtuoso
         defaultItemHeight={108}

@@ -378,7 +378,7 @@ const Footer: FC = () => {
   const root = getRootNode()
 
   return (
-    <div className="relative mx-3 mb-3 grid gap-y-2 rounded-2xl border border-white/45 bg-white/50 px-3 pb-3 pt-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/55">
+    <div className="relative mx-3 mb-3 grid gap-y-1 rounded-2xl border border-white/45 bg-white/50 px-1.5 pb-1.5 pt-1 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/55">
       <Presence present={autoCompleteListShow}>
         <Portal
           container={root}
@@ -416,32 +416,36 @@ const Footer: FC = () => {
           </ScrollArea>
         </Portal>
       </Presence>
-      <MessageInput
-        ref={shareRef}
-        value={message}
-        onChange={handleChange}
-        loading={inputLoading}
-        onPaste={handlePaste}
-        onKeyDown={handleKeyDown}
-        onCompositionStart={() => {
-          isComposing.current = true
-        }}
-        onCompositionEnd={() => {
-          isComposing.current = false
-        }}
-        maxLength={MESSAGE_MAX_LENGTH}
-      ></MessageInput>
-      <div className="flex items-center">
-        <EmojiButton onSelect={handleInjectEmoji}></EmojiButton>
-        <ImageButton disabled={inputLoading} onSelect={handleInjectImage}></ImageButton>
-        <Button
-          className="ml-auto rounded-lg border border-white/40 bg-white/80 text-slate-700 shadow-sm backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:bg-slate-700/80"
-          size="sm"
-          onClick={handleSend}
-        >
-          <span className="mr-2">Send</span>
-          <CornerDownLeftIcon className="text-slate-500 dark:text-slate-300" size={12}></CornerDownLeftIcon>
-        </Button>
+      <div className="relative">
+        <MessageInput
+          ref={shareRef}
+          value={message}
+          onChange={handleChange}
+          loading={inputLoading}
+          onPaste={handlePaste}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={() => {
+            isComposing.current = true
+          }}
+          onCompositionEnd={() => {
+            isComposing.current = false
+          }}
+          maxLength={MESSAGE_MAX_LENGTH}
+        ></MessageInput>
+        <div className="pointer-events-none absolute inset-x-1 bottom-1 flex items-center">
+          <div className="pointer-events-auto flex items-center">
+            <EmojiButton onSelect={handleInjectEmoji}></EmojiButton>
+            <ImageButton disabled={inputLoading} onSelect={handleInjectImage}></ImageButton>
+          </div>
+          <Button
+            className="pointer-events-auto ml-auto h-7 rounded-lg border border-white/40 bg-white/85 px-2.5 text-xs text-slate-700 shadow-sm backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:bg-slate-700/80"
+            size="sm"
+            onClick={handleSend}
+          >
+            <span className="mr-1.5">Send</span>
+            <CornerDownLeftIcon className="text-slate-500 dark:text-slate-300" size={12}></CornerDownLeftIcon>
+          </Button>
+        </div>
       </div>
     </div>
   )

@@ -42,14 +42,14 @@ const MessageInput = ({
 }: MessageInputProps & { ref?: Ref<HTMLTextAreaElement | null> }) => {
   return (
     <div className={cn('relative', className)}>
-      <ScrollArea className="box-border max-h-28 w-full rounded-xl border border-white/45 bg-white/70 shadow-sm backdrop-blur-md transition-[color,box-shadow] 2xl:max-h-40 dark:border-white/10 dark:bg-slate-900/60 has-focus-visible:ring-[3px] has-focus-visible:border-ring has-focus-visible:ring-ring/40">
+      <ScrollArea className="box-border max-h-40 w-full rounded-xl border border-white/25 bg-white/70 shadow-sm backdrop-blur-md transition-[color,box-shadow] 2xl:max-h-52 dark:border-white/8 dark:bg-slate-900/60 has-focus-visible:ring-[3px] has-focus-visible:border-ring has-focus-visible:ring-ring/40">
         <Textarea
           ref={ref}
           onPaste={onPaste}
           onKeyDown={onKeyDown}
           autoFocus={autoFocus}
           maxLength={maxLength}
-          rows={2}
+          rows={3}
           value={value}
           spellCheck={false}
           onCompositionStart={onCompositionStart}
@@ -58,7 +58,7 @@ const MessageInput = ({
           onChange={onChange}
           disabled={disabled || loading}
           className={cn(
-            'box-border resize-none whitespace-pre-wrap border-none bg-transparent px-3 pb-5 text-sm text-slate-700 [word-break:break-word] focus-visible:ring-0 dark:text-slate-100',
+            'box-border resize-none whitespace-pre-wrap border-none bg-transparent px-2 pb-10 text-sm text-slate-700 [word-break:break-word] focus-visible:ring-0 dark:text-slate-100',
             {
               'disabled:opacity-100': loading
             }
@@ -66,7 +66,7 @@ const MessageInput = ({
         ></Textarea>
       </ScrollArea>
       <div
-        className={cn('absolute bottom-1 right-3 rounded-lg text-[11px] text-slate-500 dark:text-slate-400', {
+        className={cn('absolute right-3 top-1.5 rounded-lg text-[11px] text-slate-500 dark:text-slate-400', {
           'opacity-50': disabled || loading
         })}
       >

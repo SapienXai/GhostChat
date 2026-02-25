@@ -202,7 +202,7 @@ const Leaderboard: FC<LeaderboardProps> = ({ virtualUsers, siteStats, mode }) =>
   }, [virtualUsers, siteStats, mode])
 
   return (
-    <ScrollArea className="mx-3 mt-2 h-full min-h-0 overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/40">
+    <ScrollArea className="h-full min-h-0 overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/40">
       <div className="space-y-2 p-2 pb-4">
         <div className="rounded-lg border border-slate-200 bg-white/90 p-2.5 dark:border-white/10 dark:bg-slate-800/55 dark:backdrop-blur-md">
           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">

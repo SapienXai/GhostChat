@@ -35,6 +35,7 @@ const ToastDomain = Remesh.domain({
               'no peer connected',
               'room not joined',
               'cannot send message',
+              'connection is not established yet',
               'chat connection timeout',
               'signaling-connect-error',
               'signaling-open-timeout'

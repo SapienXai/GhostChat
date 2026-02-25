@@ -17,6 +17,12 @@ export default defineConfig({
       name: displayName,
       permissions: ['storage', 'notifications', 'tabs'],
       homepage_url: homepage,
+      web_accessible_resources: [
+        {
+          resources: ['ghostchat_transparent.webm', 'logo.png'],
+          matches: ['<all_urls>']
+        }
+      ],
       icons: {
         '16': 'logo.png',
         '32': 'logo.png',

@@ -10,6 +10,16 @@ interface SignalMessage {
   signal: unknown
 }
 
+interface InboundSignal {
+  type: 'candidate' | 'sdp'
+  data: unknown
+}
+
+interface InboundSignalMessage extends Omit<SignalMessage, 'signal'> {
+  source: string
+  signal: InboundSignal
+}
+
 interface SocketSignalingConfig {
   id: string
   url?: string
@@ -19,10 +29,15 @@ export default class SocketSignaling extends EventEmitter {
   private stateValue: SignalingState = 'disconnected'
   private readonly idValue: string
   private readonly socket: Socket
+  private readonly candidateFlushDelayMs = 800
+  private readonly staleCandidateTtlMs = 15000
   private readonly activeJoins = new Map<string, string | undefined>()
   private readonly pendingSignals: SignalMessage[] = []
+  private readonly pendingCandidates = new Map<string, InboundSignalMessage[]>()
+  private readonly sessionSdpSeenAt = new Map<string, number>()
+  private readonly candidateFlushTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  private readonly staleCandidateTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private openHandshakeTimer?: ReturnType<typeof setTimeout>
-  private joinHeartbeatTimer?: ReturnType<typeof setInterval>
   private isBound = false
 
   constructor(config: SocketSignalingConfig) {
@@ -60,7 +75,7 @@ export default class SocketSignaling extends EventEmitter {
 
   disconnect() {
     this.clearOpenHandshakeTimer()
-    this.clearJoinHeartbeat()
+    this.clearSignalOrderingState()
     this.unbindEvents()
     this.socket.disconnect()
     this.stateValue = 'disconnected'
@@ -123,7 +138,7 @@ export default class SocketSignaling extends EventEmitter {
 
   private handleDisconnect = () => {
     this.clearOpenHandshakeTimer()
-    this.clearJoinHeartbeat()
+    this.clearSignalOrderingState()
     this.stateValue = 'disconnected'
     this.emit('disconnect')
   }
@@ -141,7 +156,33 @@ export default class SocketSignaling extends EventEmitter {
   }
 
   private handleSignal = (message: unknown) => {
-    this.emit('signal', message)
+    const parsed = this.tryParseInboundSignal(message)
+    if (!parsed) {
+      this.emit('signal', message)
+      return
+    }
+
+    const session = parsed.session
+
+    if (parsed.signal.type === 'sdp') {
+      this.sessionSdpSeenAt.set(session, Date.now())
+      this.emit('signal', parsed)
+      this.scheduleCandidateFlush(session)
+      return
+    }
+
+    if (parsed.signal.type === 'candidate') {
+      const sdpSeenAt = this.sessionSdpSeenAt.get(session)
+      const isSdpMissing = typeof sdpSeenAt !== 'number'
+      const isWithinGraceWindow = typeof sdpSeenAt === 'number' && Date.now() - sdpSeenAt < this.candidateFlushDelayMs
+
+      if (isSdpMissing || isWithinGraceWindow) {
+        this.enqueueCandidate(session, parsed)
+        return
+      }
+    }
+
+    this.emit('signal', parsed)
   }
 
   private handleJoin = (roomId: string, peerId: string, metadata?: string) => {
@@ -155,7 +196,6 @@ export default class SocketSignaling extends EventEmitter {
     this.emit('connect', id)
     this.flushQueuedSignals()
     this.syncRoomJoins()
-    this.startJoinHeartbeat()
   }
 
   private flushQueuedSignals() {
@@ -179,16 +219,100 @@ export default class SocketSignaling extends EventEmitter {
     this.openHandshakeTimer = undefined
   }
 
-  private startJoinHeartbeat() {
-    this.clearJoinHeartbeat()
-    this.joinHeartbeatTimer = setInterval(() => {
-      this.syncRoomJoins()
-    }, 5000)
+  private enqueueCandidate(session: string, message: InboundSignalMessage) {
+    const queue = this.pendingCandidates.get(session) ?? []
+    queue.push(message)
+    this.pendingCandidates.set(session, queue)
+
+    if (!this.staleCandidateTimers.has(session)) {
+      const timer = setTimeout(() => {
+        this.pendingCandidates.delete(session)
+        this.clearCandidateTimers(session)
+      }, this.staleCandidateTtlMs)
+      this.staleCandidateTimers.set(session, timer)
+    }
   }
 
-  private clearJoinHeartbeat() {
-    if (!this.joinHeartbeatTimer) return
-    clearInterval(this.joinHeartbeatTimer)
-    this.joinHeartbeatTimer = undefined
+  private scheduleCandidateFlush(session: string) {
+    const existingFlushTimer = this.candidateFlushTimers.get(session)
+    if (existingFlushTimer) {
+      clearTimeout(existingFlushTimer)
+    }
+
+    const flushTimer = setTimeout(() => {
+      this.candidateFlushTimers.delete(session)
+      this.flushPendingCandidatesNow(session)
+    }, this.candidateFlushDelayMs)
+    this.candidateFlushTimers.set(session, flushTimer)
+  }
+
+  private flushPendingCandidatesNow(session: string) {
+    const queued = this.pendingCandidates.get(session)
+    if (!queued?.length) {
+      this.clearCandidateTimers(session)
+      return
+    }
+
+    this.pendingCandidates.delete(session)
+    this.clearCandidateTimers(session)
+    for (const candidateMessage of queued) {
+      this.emit('signal', candidateMessage)
+    }
+  }
+
+  private clearCandidateTimers(session: string) {
+    const staleTimer = this.staleCandidateTimers.get(session)
+    if (staleTimer) {
+      clearTimeout(staleTimer)
+      this.staleCandidateTimers.delete(session)
+    }
+
+    const flushTimer = this.candidateFlushTimers.get(session)
+    if (flushTimer) {
+      clearTimeout(flushTimer)
+      this.candidateFlushTimers.delete(session)
+    }
+  }
+
+  private clearSignalOrderingState() {
+    this.sessionSdpSeenAt.clear()
+    this.pendingCandidates.clear()
+    for (const timer of this.candidateFlushTimers.values()) {
+      clearTimeout(timer)
+    }
+    this.candidateFlushTimers.clear()
+    for (const timer of this.staleCandidateTimers.values()) {
+      clearTimeout(timer)
+    }
+    this.staleCandidateTimers.clear()
+  }
+
+  private tryParseInboundSignal(message: unknown): InboundSignalMessage | null {
+    if (!message || typeof message !== 'object') return null
+
+    const maybeMessage = message as Partial<InboundSignalMessage>
+    if (
+      typeof maybeMessage.session !== 'string' ||
+      typeof maybeMessage.target !== 'string' ||
+      typeof maybeMessage.source !== 'string'
+    ) {
+      return null
+    }
+
+    const maybeSignal = maybeMessage.signal as Partial<InboundSignal> | undefined
+    if (!maybeSignal || (maybeSignal.type !== 'candidate' && maybeSignal.type !== 'sdp')) {
+      return null
+    }
+
+    return {
+      target: maybeMessage.target,
+      source: maybeMessage.source,
+      session: maybeMessage.session,
+      metadata: maybeMessage.metadata,
+      signal: {
+        type: maybeSignal.type,
+        data: maybeSignal.data
+      }
+    }
   }
 }

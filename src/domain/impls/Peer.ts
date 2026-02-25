@@ -10,7 +10,7 @@ export default class Peer extends Artico {
   private static instance: Peer | null = null
   private constructor(config: Config = {}) {
     const { peerId = nanoid() } = config
-    super({ id: peerId, debug: 3, signaling: new SocketSignaling({ id: peerId }) as any })
+    super({ id: peerId, debug: 0, signaling: new SocketSignaling({ id: peerId }) as any })
   }
 
   public static createInstance(config: Config = {}) {

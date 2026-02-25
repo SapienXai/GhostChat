@@ -609,10 +609,7 @@ const VirtualRoomDomain = Remesh.domain({
       name: 'Room.OnErrorEffect',
       impl: () => {
         const onRoomError$ = fromEventPattern<Error>(virtualRoomExtern.onError).pipe(
-          map((error) => {
-            console.error(error)
-            return OnErrorEvent(error)
-          })
+          map((error) => OnErrorEvent(error))
         )
         return onRoomError$
       }

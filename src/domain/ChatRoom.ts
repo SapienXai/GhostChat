@@ -849,8 +849,18 @@ const ChatRoomDomain = Remesh.domain({
       impl: () => {
         const onRoomError$ = fromEventPattern<Error>(chatRoomExtern.onError).pipe(
           map((error) => {
-            console.error(error)
-            return [SetConnectionStateCommand('error'), OnErrorEvent(error)]
+            const message = error.message.toLowerCase()
+            const transientConnectionErrorPatterns = [
+              'connection is not established yet',
+              'room not joined',
+              'cannot send message'
+            ]
+            const isTransientConnectionError = transientConnectionErrorPatterns.some((pattern) =>
+              message.includes(pattern)
+            )
+            return isTransientConnectionError
+              ? [OnErrorEvent(error)]
+              : [SetConnectionStateCommand('error'), OnErrorEvent(error)]
           })
         )
         return onRoomError$

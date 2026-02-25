@@ -109,6 +109,7 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
                   data={message}
                   like={message.like}
                   hate={message.hate}
+                  isOwnMessage={message.userId === userInfo?.id}
                   onLikeChange={() => handleLikeChange(message.id)}
                   onHateChange={() => handleHateChange(message.id)}
                   className="duration-300 animate-in fade-in-0"

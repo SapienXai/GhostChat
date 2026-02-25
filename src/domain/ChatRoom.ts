@@ -164,6 +164,8 @@ const RoomMessageSchema = v.union([
 const checkMessageFormat = (message: v.InferInput<typeof RoomMessageSchema>) =>
   v.safeParse(RoomMessageSchema, message).success
 
+const PROMPT_DEDUP_WINDOW_MS = 45_000
+
 const ChatRoomDomain = Remesh.domain({
   name: 'ChatRoomDomain',
   impl: (domain) => {
@@ -245,27 +247,44 @@ const ChatRoomDomain = Remesh.domain({
       }
     })
 
+    const canCreatePromptMessage = (get: any, userId: string, body: string) => {
+      const now = Date.now()
+      const recentDuplicate = get(messageListDomain.query.ListQuery()).some((message: any) => {
+        return (
+          message.type === MessageType.Prompt &&
+          message.userId === userId &&
+          message.body === body &&
+          now - message.sendTime < PROMPT_DEDUP_WINDOW_MS
+        )
+      })
+
+      return !recentDuplicate
+    }
+
     const JoinIsFinishedQuery = JoinStatusModule.query.IsFinishedQuery
 
     const JoinRoomCommand = domain.command({
       name: 'Room.JoinRoomCommand',
       impl: ({ get }) => {
         const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
+        const promptBody = `"${username}" joined the chat`
         return [
           UpdateUserListCommand({
             type: 'create',
             user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
           }),
-          messageListDomain.command.CreateItemCommand({
-            id: nanoid(),
-            userId,
-            username,
-            userAvatar,
-            body: `"${username}" joined the chat`,
-            type: MessageType.Prompt,
-            sendTime: Date.now(),
-            receiveTime: Date.now()
-          }),
+          canCreatePromptMessage(get, userId, promptBody)
+            ? messageListDomain.command.CreateItemCommand({
+                id: nanoid(),
+                userId,
+                username,
+                userAvatar,
+                body: promptBody,
+                type: MessageType.Prompt,
+                sendTime: Date.now(),
+                receiveTime: Date.now()
+              })
+            : null,
           JoinStatusModule.command.SetFinishedCommand(),
           JoinRoomEvent(chatRoomExtern.roomId),
           SelfJoinRoomEvent(chatRoomExtern.roomId)
@@ -282,17 +301,20 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.LeaveRoomCommand',
       impl: ({ get }) => {
         const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
+        const promptBody = `"${username}" left the chat`
         return [
-          messageListDomain.command.CreateItemCommand({
-            id: nanoid(),
-            userId,
-            username,
-            userAvatar,
-            body: `"${username}" left the chat`,
-            type: MessageType.Prompt,
-            sendTime: Date.now(),
-            receiveTime: Date.now()
-          }),
+          canCreatePromptMessage(get, userId, promptBody)
+            ? messageListDomain.command.CreateItemCommand({
+                id: nanoid(),
+                userId,
+                username,
+                userAvatar,
+                body: promptBody,
+                type: MessageType.Prompt,
+                sendTime: Date.now(),
+                receiveTime: Date.now()
+              })
+            : null,
           UpdateUserListCommand({
             type: 'delete',
             user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
@@ -653,17 +675,18 @@ const ChatRoomDomain = Remesh.domain({
                   // If a new user joins after the current user has entered the room, a join log message needs to be created.
                   const existUser = get(UserListQuery()).find((user) => user.userId === message.userId)
                   const isNewJoinUser = !existUser && message.joinTime > selfUser.joinTime
+                  const promptBody = `"${message.username}" joined the chat`
 
                   const lastMessageTime = get(LastMessageTimeQuery())
                   const needSyncHistory = lastMessageTime > message.lastMessageTime
 
                   return of(
                     UpdateUserListCommand({ type: 'create', user: message }),
-                    isNewJoinUser
+                    isNewJoinUser && canCreatePromptMessage(get, message.userId, promptBody)
                       ? messageListDomain.command.CreateItemCommand({
                           ...message,
                           id: nanoid(),
-                          body: `"${message.username}" joined the chat`,
+                          body: promptBody,
                           type: MessageType.Prompt,
                           receiveTime: Date.now()
                         })
@@ -760,13 +783,14 @@ const ChatRoomDomain = Remesh.domain({
             const existUser = get(UserListQuery()).find((user) => user.peerIds.includes(peerId))
 
             if (existUser) {
+              const promptBody = `"${existUser.username}" left the chat`
               return [
                 UpdateUserListCommand({ type: 'delete', user: { ...existUser, peerId } }),
-                existUser.peerIds.length === 1
+                existUser.peerIds.length === 1 && canCreatePromptMessage(get, existUser.userId, promptBody)
                   ? messageListDomain.command.CreateItemCommand({
                       ...existUser,
                       id: nanoid(),
-                      body: `"${existUser.username}" left the chat`,
+                      body: promptBody,
                       type: MessageType.Prompt,
                       sendTime: Date.now(),
                       receiveTime: Date.now()

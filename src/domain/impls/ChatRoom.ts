@@ -132,7 +132,8 @@ class ChatRoom extends EventHub {
   }
 }
 
-const hostRoomId = stringToHex(document.location.host)
+const normalizedHost = document.location.hostname.replace(/^www\./i, '')
+const hostRoomId = stringToHex(normalizedHost)
 
 const chatRoom = new ChatRoom({ roomId: hostRoomId, peer: Peer.createInstance() })
 

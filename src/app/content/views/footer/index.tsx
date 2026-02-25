@@ -378,7 +378,7 @@ const Footer: FC = () => {
   const root = getRootNode()
 
   return (
-    <div className="relative mx-3 mt-2 mb-3 grid gap-y-1 rounded-2xl border border-white/45 bg-white/50 px-1.5 pb-1.5 pt-1 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/55">
+    <div className="relative mt-2">
       <Presence present={autoCompleteListShow}>
         <Portal
           container={root}
@@ -416,7 +416,7 @@ const Footer: FC = () => {
           </ScrollArea>
         </Portal>
       </Presence>
-      <div className="relative">
+      <div className="relative overflow-hidden rounded-2xl">
         <MessageInput
           ref={shareRef}
           value={message}
@@ -432,13 +432,13 @@ const Footer: FC = () => {
           }}
           maxLength={MESSAGE_MAX_LENGTH}
         ></MessageInput>
-        <div className="pointer-events-none absolute inset-x-1 bottom-1 flex items-center">
+        <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-center">
           <div className="pointer-events-auto flex items-center">
             <EmojiButton onSelect={handleInjectEmoji}></EmojiButton>
             <ImageButton disabled={inputLoading} onSelect={handleInjectImage}></ImageButton>
           </div>
           <Button
-            className="pointer-events-auto ml-auto h-7 rounded-lg border border-white/40 bg-white/85 px-2.5 text-xs text-slate-700 shadow-sm backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:bg-slate-700/80"
+            className="pointer-events-auto ml-auto h-7 rounded-lg border border-white/30 bg-white/80 px-2.5 text-xs text-slate-700 shadow-sm backdrop-blur-md hover:bg-white dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-100 dark:hover:bg-slate-700/80"
             size="sm"
             onClick={handleSend}
           >

@@ -88,11 +88,7 @@ export default function App() {
   }, [])
 
   const themeMode =
-    userInfo?.themeMode === 'system'
-      ? checkDarkMode()
-        ? 'dark'
-        : 'light'
-      : (userInfo?.themeMode ?? (checkDarkMode() ? 'dark' : 'light'))
+    userInfo?.themeMode === 'system' ? (checkDarkMode() ? 'dark' : 'light') : (userInfo?.themeMode ?? 'light')
 
   const danmakuContainerRef = useRef<HTMLDivElement>(null)
 

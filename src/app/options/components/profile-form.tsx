@@ -24,7 +24,7 @@ const defaultUserInfo: UserInfo = {
   name: '',
   avatar: '',
   createTime: Date.now(),
-  themeMode: 'system',
+  themeMode: 'light',
   danmakuEnabled: true,
   notificationEnabled: true,
   notificationType: 'at'

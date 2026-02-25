@@ -42,7 +42,7 @@ const generateUserInfo = async (): Promise<UserInfo> => {
     name: generateRandomName(),
     avatar: await generateRandomAvatar(MAX_AVATAR_SIZE),
     createTime: Date.now(),
-    themeMode: 'system',
+    themeMode: 'light',
     danmakuEnabled: true,
     notificationEnabled: true,
     notificationType: 'all'

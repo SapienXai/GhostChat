@@ -111,7 +111,7 @@ const MessageItem: FC<MessageItemProps> = (props) => {
             </div>
             <FormatDate
               className={cn(
-                'text-xs',
+                'text-[10px] leading-none',
                 props.isOwnMessage ? 'text-slate-500 dark:text-slate-300' : 'text-slate-500 dark:text-slate-300'
               )}
               date={props.data.sendTime}

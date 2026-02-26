@@ -1,6 +1,5 @@
 import { nanoid } from 'nanoid'
 import { Artico } from '@rtco/client'
-import SocketSignaling from './SocketSignaling'
 
 export interface Config {
   peerId?: string
@@ -10,7 +9,7 @@ export default class Peer extends Artico {
   private static instance: Peer | null = null
   private constructor(config: Config = {}) {
     const { peerId = nanoid() } = config
-    super({ id: peerId, debug: 0, signaling: new SocketSignaling({ id: peerId }) as any })
+    super({ id: peerId, debug: 0 })
   }
 
   public static createInstance(config: Config = {}) {

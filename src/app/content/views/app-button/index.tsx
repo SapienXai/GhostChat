@@ -30,6 +30,10 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
   const isDarkMode = userInfo?.themeMode === 'dark' ? true : userInfo?.themeMode === 'light' ? false : checkDarkMode()
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const canPlaySoundRef = useRef(false)
+  const prevHasUnreadRef = useRef(hasUnreadQuery)
+  const lastPingAtRef = useRef(0)
   const dragStartRef = useRef<{ x: number; y: number } | null>(null)
   const draggedRef = useRef(false)
   const resolveRuntimeVideoUrl = () => {
@@ -67,6 +71,48 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
     send(appStatusDomain.command.UpdatePositionCommand({ x, y }))
   }, [x, y])
 
+  const playMessagePing = () => {
+    const now = Date.now()
+    if (now - lastPingAtRef.current < 350) return
+    lastPingAtRef.current = now
+
+    const AudioContextCtor = globalThis.AudioContext || (globalThis as any).webkitAudioContext
+    if (!AudioContextCtor) return
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextCtor()
+    }
+
+    const ctx = audioContextRef.current
+    if (!ctx) return
+    if (ctx.state === 'suspended' && !canPlaySoundRef.current) return
+
+    const start = ctx.currentTime + 0.01
+    const gain = ctx.createGain()
+    const osc = ctx.createOscillator()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(820, start)
+    osc.frequency.exponentialRampToValueAtTime(1240, start + 0.08)
+
+    gain.gain.setValueAtTime(0.0001, start)
+    gain.gain.exponentialRampToValueAtTime(0.08, start + 0.015)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14)
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(start)
+    osc.stop(start + 0.16)
+  }
+
+  useEffect(() => {
+    const hadUnread = prevHasUnreadRef.current
+    const hasNewUnread = !hadUnread && hasUnreadQuery
+    prevHasUnreadRef.current = hasUnreadQuery
+    if (!hasNewUnread) return
+    playMessagePing()
+  }, [hasUnreadQuery])
+
   const { setRef: appMenuRef } = useTriggerAway(['click'], () => setMenuOpen(false))
 
   const handleToggleMenu = (e: MouseEvent<HTMLButtonElement>) => {
@@ -92,6 +138,10 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
 
   const handleIconMouseDown = (e: MouseEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return
+    canPlaySoundRef.current = true
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      void audioContextRef.current.resume()
+    }
     startDrag(e.clientX, e.clientY)
     dragStartRef.current = { x: e.clientX, y: e.clientY }
     draggedRef.current = false
@@ -181,7 +231,7 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
         onClick={handleIconClick}
         onDragStart={(e) => e.preventDefault()}
         onContextMenu={handleToggleMenu}
-        className="relative z-20 size-14 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-hidden after:absolute after:-inset-1 after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),#ff0040_0%,#ff7a00_12.5%,#ffe600_25%,#28ff7a_37.5%,#00d4ff_50%,#2f6bff_62.5%,#9b4dff_75%,#ff2fd6_87.5%,#ff0040_100%)]"
+        className="relative z-20 size-14 rounded-full p-0 text-xs shadow-lg shadow-slate-500/50 overflow-visible after:absolute after:-inset-[1px] after:z-10 after:animate-[shimmer_2s_linear_infinite] after:rounded-full after:bg-[conic-gradient(from_var(--shimmer-angle),#ff0040_0%,#ff7a00_12.5%,#ffe600_25%,#28ff7a_37.5%,#00d4ff_50%,#2f6bff_62.5%,#9b4dff_75%,#ff2fd6_87.5%,#ff0040_100%)]"
       >
         <AnimatePresence>
           {hasUnreadQuery && (
@@ -190,12 +240,19 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.1 }}
-              className="absolute -right-1 -top-1 z-30 flex size-7 items-center justify-center"
+              className="absolute -right-2 -top-2 z-30 flex size-7 items-center justify-center"
             >
               <span
-                className={cn('absolute inline-flex size-full animate-ping rounded-full opacity-75', 'bg-orange-400')}
+                className={cn('absolute inline-flex size-full animate-ping rounded-full opacity-80', 'bg-lime-300')}
               ></span>
-              <span className={cn('relative inline-flex size-4 rounded-full', 'bg-orange-500')}></span>
+              <motion.span
+                animate={{ scale: [1, 1.18, 1] }}
+                transition={{ duration: 1.05, repeat: Infinity, ease: 'easeInOut' }}
+                className={cn(
+                  'relative inline-flex size-4 rounded-full',
+                  'bg-lime-400 shadow-[0_0_12px_rgba(132,204,22,0.95)]'
+                )}
+              ></motion.span>
             </motion.div>
           )}
         </AnimatePresence>

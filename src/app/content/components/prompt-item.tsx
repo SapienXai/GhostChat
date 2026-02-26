@@ -11,6 +11,7 @@ export interface PromptItemProps {
 }
 
 const PromptItem: FC<PromptItemProps> = ({ data, className }) => {
+  const displayName = typeof data.username === 'string' && data.username.trim().length > 0 ? data.username : 'Unknown'
   return (
     <div className={cn('flex justify-center px-4 py-1.5', className)}>
       <Badge
@@ -19,7 +20,7 @@ const PromptItem: FC<PromptItemProps> = ({ data, className }) => {
       >
         <Avatar className="size-4">
           <AvatarImage src={data.userAvatar} className="size-full" alt="avatar" />
-          <AvatarFallback>{data.username.at(0)}</AvatarFallback>
+          <AvatarFallback>{displayName.at(0) ?? '?'}</AvatarFallback>
         </Avatar>
         {data.body}
       </Badge>

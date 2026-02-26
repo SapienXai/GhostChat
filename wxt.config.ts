@@ -19,7 +19,7 @@ export default defineConfig({
       homepage_url: homepage,
       web_accessible_resources: [
         {
-          resources: ['ghostchat_transparent.webm', 'logo.png'],
+          resources: ['ghostchat_transparent.webm', 'logo.png', 'content-scripts/content.css'],
           matches: ['<all_urls>']
         }
       ],

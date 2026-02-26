@@ -1,32 +1,51 @@
 import type { Room } from '@rtco/client'
 
 import { ChatRoomExtern } from '@/domain/externs/ChatRoom'
+import type { RoomScope } from '@/domain/externs/ChatRoom'
 import { stringToHex } from '@/utils'
 import EventHub from '@resreq/event-hub'
 import type { RoomMessage } from '@/domain/ChatRoom'
 import { JSONR } from '@/utils'
+import { GLOBAL_CHAT_ROOM_ID } from '@/constants/config'
 import Peer from './Peer'
 
 export interface Config {
   peer: Peer
-  roomId: string
+  localRoomId: string
+  globalRoomId: string
 }
 
 class ChatRoom extends EventHub {
   readonly peer: Peer
-  readonly roomId: string
+  private readonly localRoomId: string
+  private readonly globalRoomId: string
+  private currentScope: RoomScope = 'local'
   readonly peerId: string
   private room?: Room
   private connectTimeout?: ReturnType<typeof setTimeout>
   private readonly maxSendRetries = 6
   private readonly baseRetryDelayMs = 200
+  private static readonly READY_EVENT = 'ready'
+  private static readonly MESSAGE_EVENT = 'message'
+  private static readonly JOIN_EVENT = 'join-room'
+  private static readonly LEAVE_EVENT = 'leave-room'
+
+  get scope() {
+    return this.currentScope
+  }
+
+  get roomId() {
+    return this.currentScope === 'global' ? this.globalRoomId : this.localRoomId
+  }
 
   constructor(config: Config) {
     super()
     this.peer = config.peer
-    this.roomId = config.roomId
+    this.localRoomId = config.localRoomId
+    this.globalRoomId = config.globalRoomId
     this.peerId = config.peer.id
     this.joinRoom = this.joinRoom.bind(this)
+    this.setScope = this.setScope.bind(this)
     this.onReady = this.onReady.bind(this)
     this.sendMessage = this.sendMessage.bind(this)
     this.onMessage = this.onMessage.bind(this)
@@ -36,31 +55,39 @@ class ChatRoom extends EventHub {
     this.onError = this.onError.bind(this)
   }
 
+  setScope(scope: RoomScope) {
+    if (this.currentScope === scope) {
+      return this
+    }
+    this.currentScope = scope
+    this.clearConnectTimeout()
+    if (this.room) {
+      this.room.leave()
+      this.room = undefined
+    }
+    return this
+  }
+
   joinRoom() {
     this.startConnectTimeout()
     if (this.room) {
-      this.room = this.peer.join(this.roomId)
-      this.handleReady()
+      this.room.leave()
+      this.room = undefined
+    }
+
+    if (this.peer.state === 'ready') {
+      this.connectRoom()
     } else {
-      if (this.peer.state === 'ready') {
-        this.room = this.peer.join(this.roomId)
-        this.handleReady()
-      } else {
-        this.peer.once('open', () => {
-          this.room = this.peer.join(this.roomId)
-          this.handleReady()
-        })
-      }
+      this.peer.once('open', () => {
+        this.connectRoom()
+      })
     }
     return this
   }
 
   onReady(callback: (roomId: string) => void) {
-    if (!this.room) {
-      this.once('ready', () => {
-        callback(this.roomId)
-      })
-    } else {
+    this.on(ChatRoom.READY_EVENT, (roomId: unknown) => callback(String(roomId)))
+    if (this.room) {
       callback(this.roomId)
     }
     return this
@@ -105,62 +132,23 @@ class ChatRoom extends EventHub {
   }
 
   onMessage(callback: (message: RoomMessage) => void) {
-    if (!this.room) {
-      this.once('ready', () => {
-        if (!this.room) {
-          this.emit('error', new Error('Room not joined'))
-        } else {
-          this.room.on('message', (message) => callback(JSONR.parse(message) as RoomMessage))
-        }
-      })
-    } else {
-      this.room.on('message', (message) => callback(JSONR.parse(message) as RoomMessage))
-    }
+    this.on(ChatRoom.MESSAGE_EVENT, (message: unknown) => callback(message as RoomMessage))
     return this
   }
 
   onJoinRoom(callback: (id: string) => void) {
-    if (!this.room) {
-      this.once('ready', () => {
-        if (!this.room) {
-          this.emit('error', new Error('Room not joined'))
-        } else {
-          this.room.on('join', (id) => callback(id))
-        }
-      })
-    } else {
-      this.room.on('join', (id) => callback(id))
-    }
+    this.on(ChatRoom.JOIN_EVENT, (id: unknown) => callback(String(id)))
     return this
   }
 
   onLeaveRoom(callback: (id: string) => void) {
-    if (!this.room) {
-      this.once('ready', () => {
-        if (!this.room) {
-          this.emit('error', new Error('Room not joined'))
-        } else {
-          this.room.on('leave', (id) => callback(id))
-        }
-      })
-    } else {
-      this.room.on('leave', (id) => callback(id))
-    }
+    this.on(ChatRoom.LEAVE_EVENT, (id: unknown) => callback(String(id)))
     return this
   }
 
   leaveRoom() {
     this.clearConnectTimeout()
-    if (!this.room) {
-      this.once('ready', () => {
-        if (!this.room) {
-          this.emit('error', new Error('Room not joined'))
-        } else {
-          this.room.leave()
-          this.room = undefined
-        }
-      })
-    } else {
+    if (this.room) {
       this.room.leave()
       this.room = undefined
     }
@@ -190,7 +178,33 @@ class ChatRoom extends EventHub {
 
   private handleReady() {
     this.clearConnectTimeout()
-    this.emit('ready', this.roomId)
+    this.emit(ChatRoom.READY_EVENT, this.roomId)
+  }
+
+  private connectRoom() {
+    const activeRoom = this.peer.join(this.roomId)
+    this.room = activeRoom
+    this.bindRoomEvents(activeRoom)
+    this.handleReady()
+  }
+
+  private bindRoomEvents(room: Room) {
+    room.on('message', (message) => {
+      if (this.room !== room) return
+      try {
+        this.emit(ChatRoom.MESSAGE_EVENT, JSONR.parse(message) as RoomMessage)
+      } catch (error) {
+        this.emit('error', this.toError(error))
+      }
+    })
+    room.on('join', (id) => {
+      if (this.room !== room) return
+      this.emit(ChatRoom.JOIN_EVENT, id)
+    })
+    room.on('leave', (id) => {
+      if (this.room !== room) return
+      this.emit(ChatRoom.LEAVE_EVENT, id)
+    })
   }
 
   private toError(error: unknown): Error {
@@ -216,9 +230,10 @@ class ChatRoom extends EventHub {
 }
 
 const normalizedHost = document.location.hostname.replace(/^www\./i, '')
-const hostRoomId = stringToHex(normalizedHost)
+const localRoomId = stringToHex(normalizedHost)
+const globalRoomId = stringToHex(GLOBAL_CHAT_ROOM_ID)
 
-const chatRoom = new ChatRoom({ roomId: hostRoomId, peer: Peer.createInstance() })
+const chatRoom = new ChatRoom({ localRoomId, globalRoomId, peer: Peer.createInstance() })
 
 export const ChatRoomImpl = ChatRoomExtern.impl(chatRoom)
 

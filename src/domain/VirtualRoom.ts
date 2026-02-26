@@ -69,8 +69,8 @@ export type RoomUser = MessageUser & { peerIds: string[]; fromInfos: FromInfo[];
 
 const MessageUserSchema = {
   userId: v.string(),
-  username: v.string(),
-  userAvatar: v.string()
+  username: v.optional(v.string(), 'Unknown'),
+  userAvatar: v.optional(v.string(), '')
 }
 
 const FromInfoSchema = {
@@ -516,7 +516,6 @@ const VirtualRoomDomain = Remesh.domain({
           mergeMap((message) => {
             // Filter out messages that do not conform to the format
             if (!checkMessageFormat(message)) {
-              console.warn('Invalid message format', message)
               return EMPTY
             }
 

@@ -20,15 +20,24 @@ export interface AtUser extends MessageUser {
   positions: [number, number][]
 }
 
+export interface MessageFromInfo {
+  href: string
+  hostname: string
+  origin: string
+  title: string
+}
+
 export interface NormalMessage extends MessageUser {
   type: MessageType.Normal
   id: string
+  peerId?: string
   body: string
   sendTime: number
   receiveTime: number
   likeUsers: MessageUser[]
   hateUsers: MessageUser[]
   atUsers: AtUser[]
+  fromInfo?: MessageFromInfo
 }
 
 export interface PromptMessage extends MessageUser {
@@ -37,6 +46,7 @@ export interface PromptMessage extends MessageUser {
   body: string
   sendTime: number
   receiveTime: number
+  fromInfo?: MessageFromInfo
 }
 
 export type Message = NormalMessage | PromptMessage

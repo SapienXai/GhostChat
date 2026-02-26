@@ -1,8 +1,9 @@
 import { Remesh } from 'remesh'
 import { map, merge, of, EMPTY, mergeMap, fromEventPattern } from 'rxjs'
-import type { AtUser, NormalMessage } from './MessageList'
+import type { AtUser, MessageFromInfo, NormalMessage } from './MessageList'
 import { type MessageUser } from './MessageList'
 import { ChatRoomExtern } from '@/domain/externs/ChatRoom'
+import type { RoomScope } from '@/domain/externs/ChatRoom'
 import MessageListDomain, { MessageType } from '@/domain/MessageList'
 import UserInfoDomain from '@/domain/UserInfo'
 import { desert, getTextByteSize, upsert } from '@/utils'
@@ -10,6 +11,7 @@ import { nanoid } from 'nanoid'
 import StatusModule from '@/domain/modules/Status'
 import { SYNC_HISTORY_MAX_DAYS, WEB_RTC_MAX_MESSAGE_SIZE } from '@/constants/config'
 import * as v from 'valibot'
+import getSiteInfo from '@/utils/getSiteInfo'
 
 export { MessageType }
 
@@ -54,9 +56,11 @@ export interface HateMessage extends MessageUser {
 export interface TextMessage extends MessageUser {
   type: SendType.Text
   id: string
+  peerId?: string
   body: string
   sendTime: number
   atUsers: AtUser[]
+  fromInfo?: MessageFromInfo
 }
 
 export interface TypingMessage extends MessageUser {
@@ -87,8 +91,8 @@ export type ChatConnectionState = 'disconnected' | 'connecting' | 'connected' | 
 
 const MessageUserSchema = {
   userId: v.string(),
-  username: v.string(),
-  userAvatar: v.string()
+  username: v.optional(v.string(), 'Unknown'),
+  userAvatar: v.optional(v.string(), '')
 }
 
 const AtUserSchema = {
@@ -96,15 +100,24 @@ const AtUserSchema = {
   ...MessageUserSchema
 }
 
+const MessageFromInfoSchema = {
+  href: v.string(),
+  hostname: v.string(),
+  origin: v.string(),
+  title: v.string()
+}
+
 const NormalMessageSchema = {
   id: v.string(),
+  peerId: v.optional(v.string()),
   type: v.literal(MessageType.Normal),
   body: v.string(),
   sendTime: v.number(),
   receiveTime: v.number(),
-  likeUsers: v.array(v.object(MessageUserSchema)),
-  hateUsers: v.array(v.object(MessageUserSchema)),
-  atUsers: v.array(v.object(AtUserSchema)),
+  likeUsers: v.optional(v.array(v.object(MessageUserSchema)), []),
+  hateUsers: v.optional(v.array(v.object(MessageUserSchema)), []),
+  atUsers: v.optional(v.array(v.object(AtUserSchema)), []),
+  fromInfo: v.optional(v.object(MessageFromInfoSchema)),
   ...MessageUserSchema
 }
 
@@ -112,9 +125,11 @@ const RoomMessageSchema = v.union([
   v.object({
     type: v.literal(SendType.Text),
     id: v.string(),
+    peerId: v.optional(v.string()),
     body: v.string(),
     sendTime: v.number(),
-    atUsers: v.array(v.object(AtUserSchema)),
+    atUsers: v.optional(v.array(v.object(AtUserSchema)), []),
+    fromInfo: v.optional(v.object(MessageFromInfoSchema)),
     ...MessageUserSchema
   }),
   v.object({
@@ -190,6 +205,18 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.JoinStatusModule'
     })
 
+    const RoomScopeState = domain.state<RoomScope>({
+      name: 'Room.RoomScopeState',
+      default: chatRoomExtern.scope
+    })
+
+    const RoomScopeQuery = domain.query({
+      name: 'Room.RoomScopeQuery',
+      impl: ({ get }) => {
+        return get(RoomScopeState())
+      }
+    })
+
     const ConnectionStateState = domain.state<ChatConnectionState>({
       name: 'Room.ConnectionStateState',
       default: 'disconnected'
@@ -245,7 +272,18 @@ const ChatRoomDomain = Remesh.domain({
     const SelfUserQuery = domain.query({
       name: 'Room.SelfUserQuery',
       impl: ({ get }) => {
-        return get(UserListQuery()).find((user) => user.peerIds.includes(chatRoomExtern.peerId))!
+        const selfUser = get(UserListQuery()).find((user) => user.peerIds.includes(chatRoomExtern.peerId))
+        if (selfUser) {
+          return selfUser
+        }
+        const userInfo = get(userInfoDomain.query.UserInfoQuery())
+        return {
+          userId: userInfo?.id ?? 'unknown',
+          username: userInfo?.name ?? 'Unknown',
+          userAvatar: userInfo?.avatar ?? '',
+          joinTime: Date.now(),
+          peerIds: [chatRoomExtern.peerId]
+        }
       }
     })
 
@@ -352,18 +390,89 @@ const ChatRoomDomain = Remesh.domain({
       return null
     })
 
+    const ApplyRoomScopeCommand = domain.command({
+      name: 'Room.ApplyRoomScopeCommand',
+      impl: (_, scope: RoomScope) => {
+        return [RoomScopeState().new(scope)]
+      }
+    })
+
+    ApplyRoomScopeCommand.after((_, scope) => {
+      chatRoomExtern.setScope(scope)
+      return null
+    })
+
+    const ReconnectRoomCommand = domain.command({
+      name: 'Room.ReconnectRoomCommand',
+      impl: ({ get }, scope: RoomScope) => {
+        const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
+        return [
+          RoomScopeState().new(scope),
+          JoinStatusModule.command.SetInitialCommand(),
+          SetConnectionStateCommand('connecting'),
+          UserListState().new([]),
+          UpdateUserListCommand({
+            type: 'create',
+            user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
+          }),
+          UpdateTypingUsersCommand(new Set()),
+          UpdateAwayUsersCommand(new Set()),
+          messageListDomain.command.ClearListCommand()
+        ]
+      }
+    })
+
+    ReconnectRoomCommand.after((_, scope) => {
+      chatRoomExtern.leaveRoom()
+      chatRoomExtern.setScope(scope)
+      chatRoomExtern.joinRoom()
+      return null
+    })
+
+    const SwitchRoomScopeCommand = domain.command({
+      name: 'Room.SwitchRoomScopeCommand',
+      impl: ({ get }, scope: RoomScope) => {
+        if (get(RoomScopeQuery()) === scope) {
+          return null
+        }
+
+        const shouldReconnect = get(JoinStatusModule.query.IsFinishedQuery())
+
+        if (shouldReconnect) {
+          return [ReconnectRoomCommand(scope)]
+        }
+
+        return [
+          ApplyRoomScopeCommand(scope),
+          UserListState().new([]),
+          UpdateTypingUsersCommand(new Set()),
+          UpdateAwayUsersCommand(new Set()),
+          messageListDomain.command.ClearListCommand()
+        ]
+      }
+    })
+
     const SendTextMessageCommand = domain.command({
       name: 'Room.SendTextMessageCommand',
       impl: ({ get }, message: string | { body: string; atUsers: AtUser[] }) => {
         const self = get(SelfUserQuery())
+        const siteInfo = getSiteInfo()
+        const fromInfo: MessageFromInfo = {
+          href: siteInfo.href,
+          hostname: siteInfo.hostname,
+          origin: siteInfo.origin,
+          title: siteInfo.title
+        }
 
         const textMessage: TextMessage = {
           ...self,
           id: nanoid(),
+          peerId: chatRoomExtern.peerId,
           type: SendType.Text,
           sendTime: Date.now(),
           body: typeof message === 'string' ? message : message.body,
-          atUsers: typeof message === 'string' ? [] : message.atUsers
+          atUsers: typeof message === 'string' ? [] : message.atUsers,
+          fromInfo
         }
 
         const listMessage: NormalMessage = {
@@ -372,7 +481,8 @@ const ChatRoomDomain = Remesh.domain({
           receiveTime: Date.now(),
           likeUsers: [],
           hateUsers: [],
-          atUsers: typeof message === 'string' ? [] : message.atUsers
+          atUsers: typeof message === 'string' ? [] : message.atUsers,
+          fromInfo
         }
 
         chatRoomExtern.sendMessage(textMessage)
@@ -696,7 +806,6 @@ const ChatRoomDomain = Remesh.domain({
           mergeMap((message) => {
             // Filter out messages that do not conform to the format
             if (!checkMessageFormat(message)) {
-              console.warn('Invalid message format', message)
               return EMPTY
             }
 
@@ -748,7 +857,9 @@ const ChatRoomDomain = Remesh.domain({
                       type: MessageType.Normal,
                       receiveTime: Date.now(),
                       likeUsers: [],
-                      hateUsers: []
+                      hateUsers: [],
+                      atUsers: message.atUsers ?? [],
+                      fromInfo: message.fromInfo
                     })
                   )
                 case SendType.Like:
@@ -873,12 +984,14 @@ const ChatRoomDomain = Remesh.domain({
         UserListQuery,
         ConnectionStateQuery,
         JoinIsFinishedQuery,
+        RoomScopeQuery,
         TypingUsersQuery,
         AwayUsersQuery
       },
       command: {
         JoinRoomCommand,
         LeaveRoomCommand,
+        SwitchRoomScopeCommand,
         SendTextMessageCommand,
         SendLikeMessageCommand,
         SendHateMessageCommand,

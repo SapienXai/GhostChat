@@ -33,6 +33,7 @@ const Footer: FC = () => {
   const userInfoDomain = useRemeshDomain(UserInfoDomain())
   const userInfo = useRemeshQuery(userInfoDomain.query.UserInfoQuery())
   const userList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
+  const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
   const chatRoomJoinIsFinished = useRemeshQuery(chatRoomDomain.query.JoinIsFinishedQuery())
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -414,6 +415,7 @@ const Footer: FC = () => {
         <MessageInput
           ref={shareRef}
           value={message}
+          placeholder={roomScope === 'global' ? 'Write to global chat...' : 'Type your message here.'}
           onChange={handleChange}
           loading={inputLoading}
           onPaste={handlePaste}

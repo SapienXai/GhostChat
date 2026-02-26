@@ -1,5 +1,5 @@
 import { type FC } from 'react'
-import { ThumbsDownIcon, ThumbsUpIcon } from 'lucide-react'
+import { ExternalLinkIcon, ThumbsDownIcon, ThumbsUpIcon } from 'lucide-react'
 import LikeButton from './like-button'
 import FormatDate from './format-date'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -14,12 +14,16 @@ export interface MessageItemProps {
   like: boolean
   hate: boolean
   isOwnMessage?: boolean
+  showSourceInfo?: boolean
   onLikeChange?: (checked: boolean) => void
   onHateChange?: (checked: boolean) => void
   className?: string
 }
 
 const MessageItem: FC<MessageItemProps> = (props) => {
+  const displayName =
+    typeof props.data.username === 'string' && props.data.username.trim().length > 0 ? props.data.username : 'Unknown'
+  const avatarFallback = displayName.at(0) ?? '?'
   const handleLikeChange = (checked: boolean) => {
     props.onLikeChange?.(checked)
   }
@@ -27,12 +31,33 @@ const MessageItem: FC<MessageItemProps> = (props) => {
     props.onHateChange?.(checked)
   }
 
-  let content = props.data.body
+  let content = typeof props.data.body === 'string' ? props.data.body : ''
+  const sourceHostname =
+    typeof props.data.fromInfo?.hostname === 'string' && props.data.fromInfo.hostname.length > 0
+      ? props.data.fromInfo.hostname
+      : typeof props.data.fromInfo?.href === 'string' && props.data.fromInfo.href.length > 0
+        ? (() => {
+            try {
+              return new URL(props.data.fromInfo!.href).hostname
+            } catch {
+              return undefined
+            }
+          })()
+        : undefined
+  const sourceHref =
+    typeof props.data.fromInfo?.href === 'string' && props.data.fromInfo.href.length > 0
+      ? props.data.fromInfo.href
+      : undefined
+  const showSourceInfo = Boolean(props.showSourceInfo && sourceHostname && sourceHref)
 
   // Check if the field exists, compatible with old data
-  if (props.data.atUsers) {
+  if (Array.isArray(props.data.atUsers)) {
     const atUserPositions = props.data.atUsers.flatMap((user) =>
-      user.positions.map((position) => ({ username: user.username, userId: user.userId, position }))
+      (Array.isArray(user.positions) ? user.positions : []).map((position) => ({
+        username: user.username,
+        userId: user.userId,
+        position
+      }))
     )
 
     // Replace from back to front according to position to avoid affecting previous indices
@@ -56,7 +81,7 @@ const MessageItem: FC<MessageItemProps> = (props) => {
       <div className={cn('flex max-w-[88%] items-end gap-x-2', props.isOwnMessage && 'flex-row-reverse')}>
         <Avatar className="mb-1 border border-white/40 shadow-sm dark:border-white/10">
           <AvatarImage src={props.data.userAvatar} className="size-full" alt="avatar" />
-          <AvatarFallback>{props.data.username.at(0)}</AvatarFallback>
+          <AvatarFallback>{avatarFallback}</AvatarFallback>
         </Avatar>
         <div
           className={cn(
@@ -73,7 +98,7 @@ const MessageItem: FC<MessageItemProps> = (props) => {
                 props.isOwnMessage ? 'text-slate-700 dark:text-slate-100' : 'text-slate-700 dark:text-slate-50'
               )}
             >
-              {props.isOwnMessage ? 'You' : props.data.username}
+              {props.isOwnMessage ? 'You' : displayName}
             </div>
             <FormatDate
               className={cn(
@@ -83,6 +108,20 @@ const MessageItem: FC<MessageItemProps> = (props) => {
               date={props.data.sendTime}
             ></FormatDate>
           </div>
+          {showSourceInfo && (
+            <div className="mt-0.5 flex items-center gap-x-1 text-[11px] text-slate-500 dark:text-slate-300">
+              <span>from</span>
+              <a
+                href={sourceHref}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-x-1 hover:underline"
+              >
+                <span className="truncate">{sourceHostname}</span>
+                <ExternalLinkIcon size={10} />
+              </a>
+            </div>
+          )}
           <div className="pb-2 pt-1">
             <Markdown>{content}</Markdown>
           </div>
@@ -95,7 +134,7 @@ const MessageItem: FC<MessageItemProps> = (props) => {
             <LikeButton
               checked={props.like}
               onChange={(checked) => handleLikeChange(checked)}
-              count={props.data.likeUsers.length}
+              count={Array.isArray(props.data.likeUsers) ? props.data.likeUsers.length : 0}
             >
               <LikeButton.Icon>
                 <ThumbsUpIcon size={14}></ThumbsUpIcon>
@@ -104,7 +143,7 @@ const MessageItem: FC<MessageItemProps> = (props) => {
             <LikeButton
               checked={props.hate}
               onChange={(checked) => handleHateChange(checked)}
-              count={props.data.hateUsers.length}
+              count={Array.isArray(props.data.hateUsers) ? props.data.hateUsers.length : 0}
             >
               <LikeButton.Icon>
                 <ThumbsDownIcon size={14}></ThumbsDownIcon>

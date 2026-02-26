@@ -9,6 +9,7 @@ import LoadingIcon from '@/assets/images/loading.svg'
 export interface MessageInputProps {
   value?: string
   className?: string
+  placeholder?: string
   maxLength?: number
   preview?: boolean
   autoFocus?: boolean
@@ -30,6 +31,7 @@ const MessageInput = ({
   ref,
   value = '',
   className,
+  placeholder = 'Type your message here.',
   maxLength = 500,
   onChange,
   onPaste,
@@ -54,7 +56,7 @@ const MessageInput = ({
           spellCheck={false}
           onCompositionStart={onCompositionStart}
           onCompositionEnd={onCompositionEnd}
-          placeholder="Type your message here."
+          placeholder={placeholder}
           onChange={onChange}
           disabled={disabled || loading}
           className={cn(

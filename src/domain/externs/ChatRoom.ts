@@ -1,10 +1,14 @@
 import { Remesh } from 'remesh'
 import type { RoomMessage } from '../ChatRoom'
 
+export type RoomScope = 'local' | 'global'
+
 export interface ChatRoom {
   readonly peerId: string
   readonly roomId: string
+  readonly scope: RoomScope
   joinRoom: () => ChatRoom
+  setScope: (scope: RoomScope) => ChatRoom
   onReady: (callback: (roomId: string) => void) => ChatRoom
   sendMessage: (message: RoomMessage, id?: string | string[]) => ChatRoom
   onMessage: (callback: (message: RoomMessage) => void) => ChatRoom
@@ -18,8 +22,12 @@ export const ChatRoomExtern = Remesh.extern<ChatRoom>({
   default: {
     peerId: '',
     roomId: '',
+    scope: 'local',
     joinRoom: () => {
       throw new Error('"joinRoom" not implemented.')
+    },
+    setScope: () => {
+      throw new Error('"setScope" not implemented.')
     },
     onReady: () => {
       throw new Error('"onReady" not implemented.')

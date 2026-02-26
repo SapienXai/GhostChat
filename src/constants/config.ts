@@ -191,6 +191,7 @@ export const STORAGE_NAME = `GHOST_CHAT_${version}` as const
 export const USER_INFO_STORAGE_KEY = 'GHOST_CHAT_USER_INFO' as const
 
 export const MESSAGE_LIST_STORAGE_KEY = 'GHOST_CHAT_MESSAGE_LIST' as const
+export const GLOBAL_MESSAGE_LIST_STORAGE_KEY = 'GHOST_CHAT_GLOBAL_MESSAGE_LIST' as const
 
 export const APP_STATUS_STORAGE_KEY = 'GHOST_CHAT_APP_STATUS' as const
 /**

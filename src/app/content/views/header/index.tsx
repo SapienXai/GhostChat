@@ -25,7 +25,12 @@ const Header: FC = () => {
   const virtualUserList = useRemeshQuery(virtualRoomDomain.query.UserListQuery())
   const awayUsers = useRemeshQuery(chatRoomDomain.query.AwayUsersQuery())
   const connectionState = useRemeshQuery(chatRoomDomain.query.ConnectionStateQuery())
-  const chatOnlineCount = chatUserList.length
+  const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
+  const isGlobalScope = roomScope === 'global'
+  const localOnlineCount = chatUserList.length
+  const globalOnlineCount = virtualUserList.length
+  const displayOnlineCount = isGlobalScope ? globalOnlineCount : localOnlineCount
+  const displayUserList = isGlobalScope ? virtualUserList : chatUserList
 
   const virtualOnlineGroup = virtualUserList
     .flatMap((user) => user.fromInfos.map((from) => ({ from, user })))
@@ -77,7 +82,7 @@ const Header: FC = () => {
           : 'bg-slate-400'
   const connectionLabel =
     connectionState === 'connected'
-      ? chatOnlineCount > 1
+      ? displayOnlineCount > 1
         ? 'P2P Ready'
         : 'P2P Waiting Peer'
       : connectionState === 'connecting'
@@ -201,22 +206,22 @@ const Header: FC = () => {
                     <span
                       className={cn(
                         'absolute inline-flex size-full animate-ping rounded-full opacity-75',
-                        chatOnlineCount > 1 ? 'bg-green-400' : 'bg-orange-400'
+                        displayOnlineCount > 1 ? 'bg-green-400' : 'bg-orange-400'
                       )}
                     ></span>
                     <span
                       className={cn(
                         'relative inline-flex size-full rounded-full',
-                        chatOnlineCount > 1 ? 'bg-green-500' : 'bg-orange-500'
+                        displayOnlineCount > 1 ? 'bg-green-500' : 'bg-orange-500'
                       )}
                     ></span>
                   </span>
                   {import.meta.env.FIREFOX ? (
-                    <span className="tabular-nums">{Math.min(chatUserList.length, 99)}</span>
+                    <span className="tabular-nums">{Math.min(displayOnlineCount, 99)}</span>
                   ) : (
                     <span className="tabular-nums">
-                      <NumberFlow className="tabular-nums" willChange value={Math.min(chatUserList.length, 99)} />
-                      {chatUserList.length > 99 && <span className="text-[8px]">+</span>}
+                      <NumberFlow className="tabular-nums" willChange value={Math.min(displayOnlineCount, 99)} />
+                      {displayOnlineCount > 99 && <span className="text-[8px]">+</span>}
                     </span>
                   )}
                 </div>
@@ -225,11 +230,11 @@ const Header: FC = () => {
             <HoverCardContent className="w-36 rounded-lg border border-white/45 bg-white/85 p-0 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
               <ScrollArea type="scroll" className="max-h-[204px] min-h-9 p-1" ref={setChatUserListScrollParentRef}>
                 <Virtuoso
-                  data={chatUserList}
+                  data={displayUserList}
                   defaultItemHeight={28}
                   customScrollParent={chatUserListScrollParentRef!}
                   itemContent={(_index, user) => {
-                    const isAway = awayUsers.some((awayUser) => awayUser.userId === user.userId)
+                    const isAway = !isGlobalScope && awayUsers.some((awayUser) => awayUser.userId === user.userId)
                     return (
                       <div className={cn('flex  items-center gap-x-2 rounded-md px-2 py-1.5 outline-none')}>
                         <div className="relative">

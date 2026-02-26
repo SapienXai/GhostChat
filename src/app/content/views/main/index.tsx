@@ -91,6 +91,7 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
   const handleScopeChange = (scope: RoomScope) => {
     send(chatRoomDomain.command.SwitchRoomScopeCommand(scope))
   }
+  const isGlobalScope = roomScope === 'global'
 
   useEffect(() => {
     if (!leaderboardEnabled && activeTab !== 'chat') {
@@ -101,17 +102,36 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
   return (
     <div className="grid h-full grid-rows-[auto_1fr] overflow-hidden">
       <div className="mx-3 mt-2 grid grid-cols-3 gap-1 rounded-xl border border-white/45 bg-white/55 p-1 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/55">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onTabChange('chat')}
-          className={cn(
-            'h-8 rounded-lg text-xs font-medium text-slate-600 transition-colors dark:text-slate-200',
-            activeTab === 'chat' && 'bg-white/85 text-slate-900 shadow-sm dark:bg-slate-800/80 dark:text-white'
-          )}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isGlobalScope}
+          aria-label="Switch between local and global chat"
+          onClick={() => {
+            onTabChange('chat')
+            handleScopeChange(isGlobalScope ? 'local' : 'global')
+          }}
+          className="relative grid h-8 grid-cols-2 items-center rounded-lg border border-white/40 bg-white/70 px-1 shadow-sm backdrop-blur-md transition-colors hover:bg-white/85 dark:border-white/10 dark:bg-slate-800/65 dark:hover:bg-slate-800/80"
         >
-          Chat
-        </Button>
+          <span
+            className={cn(
+              'absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-md bg-white/95 shadow-sm transition-transform duration-300 ease-out dark:bg-slate-700/90',
+              isGlobalScope && 'translate-x-full'
+            )}
+          >
+            <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-slate-700 dark:text-slate-100">
+              {isGlobalScope ? 'Global' : 'Local'}
+            </span>
+          </span>
+          <span
+            className={cn(
+              'relative z-10 text-center text-[11px] font-medium text-slate-500 transition-colors dark:text-slate-300',
+              isGlobalScope ? 'col-start-1' : 'col-start-2'
+            )}
+          >
+            {isGlobalScope ? 'Local' : 'Global'}
+          </span>
+        </button>
         <Button
           variant="ghost"
           size="sm"
@@ -139,70 +159,34 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
       </div>
 
       {activeTab === 'chat' ? (
-        <div className="grid min-h-0 grid-rows-[auto_1fr]">
-          <div className="px-3 pt-2">
-            <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/45 bg-white/55 p-1 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/55">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleScopeChange('local')}
-                className={cn(
-                  'h-7 rounded-lg text-[11px] font-medium text-slate-600 transition-colors dark:text-slate-200',
-                  roomScope === 'local' && 'bg-white/85 text-slate-900 shadow-sm dark:bg-slate-800/80 dark:text-white'
-                )}
-              >
-                Local
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleScopeChange('global')}
-                className={cn(
-                  'h-7 rounded-lg text-[11px] font-medium text-slate-600 transition-colors dark:text-slate-200',
-                  roomScope === 'global' && 'bg-white/85 text-slate-900 shadow-sm dark:bg-slate-800/80 dark:text-white'
-                )}
-              >
-                Global
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled
-                className="h-7 cursor-not-allowed rounded-lg text-[11px] font-medium text-slate-400 opacity-80 dark:text-slate-500"
-              >
-                Holders Soon
-              </Button>
-            </div>
-          </div>
-          <MessageList>
-            {messageList.map((message, index) => {
-              if (message.type === MessageType.Normal) {
-                return (
-                  <MessageItem
-                    key={message.id}
-                    data={message}
-                    like={message.like}
-                    hate={message.hate}
-                    isOwnMessage={message.userId === userInfo?.id}
-                    showSourceInfo={roomScope === 'global'}
-                    onLikeChange={() => handleLikeChange(message.id)}
-                    onHateChange={() => handleHateChange(message.id)}
-                    className="duration-300 animate-in fade-in-0"
-                  />
-                )
-              } else {
-                return (
-                  <PromptItem
-                    key={message.id}
-                    data={message}
-                    className={`${index === 0 ? 'pt-4' : ''} ${index === messageList.length - 1 ? 'pb-4' : ''}`}
-                  />
-                )
-              }
-            })}
-            <TypingIndicator />
-          </MessageList>
-        </div>
+        <MessageList>
+          {messageList.map((message, index) => {
+            if (message.type === MessageType.Normal) {
+              return (
+                <MessageItem
+                  key={message.id}
+                  data={message}
+                  like={message.like}
+                  hate={message.hate}
+                  isOwnMessage={message.userId === userInfo?.id}
+                  showSourceInfo={roomScope === 'global'}
+                  onLikeChange={() => handleLikeChange(message.id)}
+                  onHateChange={() => handleHateChange(message.id)}
+                  className="duration-300 animate-in fade-in-0"
+                />
+              )
+            } else {
+              return (
+                <PromptItem
+                  key={message.id}
+                  data={message}
+                  className={`${index === 0 ? 'pt-4' : ''} ${index === messageList.length - 1 ? 'pb-4' : ''}`}
+                />
+              )
+            }
+          })}
+          <TypingIndicator />
+        </MessageList>
       ) : (
         <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]">
           <div className="min-h-0 px-3 pt-2">

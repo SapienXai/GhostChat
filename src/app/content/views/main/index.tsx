@@ -8,11 +8,12 @@ import PromptItem from '../../components/prompt-item'
 import TypingIndicator from '../../components/typing-indicator'
 import UserInfoDomain from '@/domain/UserInfo'
 import ChatRoomDomain from '@/domain/ChatRoom'
-import MessageListDomain, { MessageType } from '@/domain/MessageList'
+import MessageListDomain, { type NormalMessage, MessageType } from '@/domain/MessageList'
 import VirtualRoomDomain from '@/domain/VirtualRoom'
 import Leaderboard from './leaderboard'
 import LeaderboardFooter from './leaderboard-footer'
 import { cn } from '@/utils'
+import { getRootNode } from '@/utils'
 import type { RoomScope } from '@/domain/externs/ChatRoom'
 
 export type MainTab = 'chat' | 'trending' | 'new-rising'
@@ -116,6 +117,27 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
   const handleScopeChange = (scope: RoomScope) => {
     send(chatRoomDomain.command.SwitchRoomScopeCommand(scope))
   }
+
+  const handleReplyTarget = (message: NormalMessage) => {
+    send(
+      chatRoomDomain.command.SetReplyTargetCommand({
+        id: message.id,
+        userId: message.userId,
+        username: message.username,
+        userAvatar: message.userAvatar,
+        body: message.body
+      })
+    )
+  }
+
+  const handleReplyNavigate = (messageId: string) => {
+    const root = getRootNode()
+    const target =
+      root.querySelector<HTMLElement>(`#gc-msg-${messageId}`) ??
+      root.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
   const isGlobalScope = roomScope === 'global'
 
   useEffect(() => {
@@ -197,6 +219,8 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
                   showSourceInfo={roomScope === 'global'}
                   onLikeChange={roomScope === 'local' ? () => handleLikeChange(message.id) : undefined}
                   onHateChange={roomScope === 'local' ? () => handleHateChange(message.id) : undefined}
+                  onReply={() => handleReplyTarget(message)}
+                  onReplyNavigate={handleReplyNavigate}
                   className="duration-300 animate-in fade-in-0"
                 />
               )

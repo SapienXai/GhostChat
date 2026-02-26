@@ -1,9 +1,9 @@
 import { Remesh } from 'remesh'
 import { NotificationExtern } from './externs/Notification'
-import type { TextMessage } from '@/domain/ChatRoom'
-import ChatRoomDomain from '@/domain/ChatRoom'
+import ChatRoomDomain, { SendType as ChatSendType, type TextMessage } from '@/domain/ChatRoom'
 import UserInfoDomain from './UserInfo'
 import { map, merge } from 'rxjs'
+import VirtualRoomDomain, { type GlobalTextMessage } from '@/domain/VirtualRoom'
 
 const NotificationDomain = Remesh.domain({
   name: 'NotificationDomain',
@@ -11,6 +11,7 @@ const NotificationDomain = Remesh.domain({
     const notificationExtern = domain.getExtern(NotificationExtern)
     const userInfoDomain = domain.getDomain(UserInfoDomain())
     const chatRoomDomain = domain.getDomain(ChatRoomDomain())
+    const virtualRoomDomain = domain.getDomain(VirtualRoomDomain())
 
     const NotificationEnabledState = domain.state<boolean>({
       name: 'Notification.EnabledState',
@@ -23,6 +24,39 @@ const NotificationDomain = Remesh.domain({
         return get(NotificationEnabledState())
       }
     })
+
+    const RecentMessageIdsState = domain.state<string[]>({
+      name: 'Notification.RecentMessageIdsState',
+      default: []
+    })
+
+    const PushRecentMessageIdCommand = domain.command({
+      name: 'Notification.PushRecentMessageIdCommand',
+      impl: ({ get }, messageId: string) => {
+        const current = get(RecentMessageIdsState())
+        const next = [...current.filter((id) => id !== messageId), messageId].slice(-500)
+        return [RecentMessageIdsState().new(next)]
+      }
+    })
+
+    const toNotificationTextMessage = (message: TextMessage | GlobalTextMessage): TextMessage => {
+      if (message.type === ChatSendType.Text) {
+        return message
+      }
+      return {
+        userId: message.userId,
+        username: message.username,
+        userAvatar: message.userAvatar,
+        type: ChatSendType.Text,
+        id: message.id,
+        peerId: message.peerId,
+        body: message.body,
+        sendTime: message.sendTime,
+        atUsers: message.atUsers ?? [],
+        reply: message.reply,
+        fromInfo: message.fromInfo
+      }
+    }
 
     const EnableCommand = domain.command({
       name: 'Notification.EnableCommand',
@@ -70,23 +104,30 @@ const NotificationDomain = Remesh.domain({
       name: 'Notification.OnRoomMessageEffect',
       impl: ({ fromEvent, get }) => {
         const onTextMessage$ = fromEvent(chatRoomDomain.event.OnTextMessageEvent)
-        const onMessage$ = merge(onTextMessage$).pipe(
+        const onGlobalTextMessage$ = fromEvent(virtualRoomDomain.event.OnGlobalTextMessageEvent).pipe(
+          map((message) => toNotificationTextMessage(message))
+        )
+        const onMessage$ = merge(onTextMessage$, onGlobalTextMessage$).pipe(
           map((message) => {
             const notificationEnabled = get(IsEnabledQuery())
+            if (get(RecentMessageIdsState()).includes(message.id)) {
+              return null
+            }
             if (notificationEnabled) {
               // Compatible with old versions, without the atUsers field
               if (message.atUsers) {
                 const userInfo = get(userInfoDomain.query.UserInfoQuery())
                 const hasAtSelf = message.atUsers.find((user) => user.userId === userInfo?.id)
+                const hasReplySelf = message.reply?.userId === userInfo?.id
                 if (userInfo?.notificationType === 'all') {
-                  return PushCommand(message)
+                  return [PushRecentMessageIdCommand(message.id), PushCommand(message)]
                 }
-                if (userInfo?.notificationType === 'at' && hasAtSelf) {
-                  return PushCommand(message)
+                if (userInfo?.notificationType === 'at' && (hasAtSelf || hasReplySelf)) {
+                  return [PushRecentMessageIdCommand(message.id), PushCommand(message)]
                 }
                 return null
               } else {
-                return PushCommand(message)
+                return [PushRecentMessageIdCommand(message.id), PushCommand(message)]
               }
             } else {
               return null

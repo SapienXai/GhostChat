@@ -1,6 +1,6 @@
 import type { ChangeEvent, KeyboardEvent, ClipboardEvent } from 'react'
 import { useMemo, useRef, useState, useEffect, useCallback, type FC } from 'react'
-import { CornerDownLeftIcon } from 'lucide-react'
+import { CornerDownLeftIcon, XIcon } from 'lucide-react'
 import { useRemeshDomain, useRemeshQuery, useRemeshSend } from 'remesh-react'
 import MessageInput from '../../components/message-input'
 import EmojiButton from '../../components/emoji-button'
@@ -35,6 +35,7 @@ const Footer: FC = () => {
   const userList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
   const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
   const chatRoomJoinIsFinished = useRemeshQuery(chatRoomDomain.query.JoinIsFinishedQuery())
+  const replyTarget = useRemeshQuery(chatRoomDomain.query.ReplyTargetQuery())
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { x, y, selectionStart, selectionEnd, setRef } = useCursorPosition()
@@ -153,6 +154,16 @@ const Footer: FC = () => {
   }, [searchNameKeyword, userList, userInfo])
 
   const selectedUser = autoCompleteList.find((_, index) => index === selectedUserIndex)!
+  const replyPreviewBody =
+    typeof replyTarget?.body === 'string'
+      ? (() => {
+          const normalized = replyTarget.body
+            .replace(/!\[Image\]\([^)]*\)/g, '[Image]')
+            .replace(/\s+/g, ' ')
+            .trim()
+          return normalized.length > 96 ? `${normalized.slice(0, 96)}...` : normalized
+        })()
+      : ''
 
   // Replace the hash URL in ![Image](hash:${hash}) with base64 and update the atUserRecord.
   const transformMessage = async (message: string) => {
@@ -190,14 +201,20 @@ const Footer: FC = () => {
       })
       .filter(Boolean)
 
-    const newMessage = { body: transformedMessage, atUsers }
+    const newMessage = { body: transformedMessage, atUsers, reply: replyTarget ?? undefined }
     const byteSize = getTextByteSize(JSON.stringify(newMessage))
 
     if (byteSize > WEB_RTC_MAX_MESSAGE_SIZE) {
       return send(toastDomain.command.WarningCommand('Message size cannot exceed 256KiB.'))
     }
 
-    send(chatRoomDomain.command.SendTextMessageCommand({ body: transformedMessage, atUsers }))
+    send(
+      chatRoomDomain.command.SendTextMessageCommand({
+        body: transformedMessage,
+        atUsers,
+        reply: replyTarget ?? undefined
+      })
+    )
     send(messageInputDomain.command.ClearCommand())
   }
 
@@ -373,7 +390,7 @@ const Footer: FC = () => {
   const root = getRootNode()
 
   return (
-    <div className="relative mt-2">
+    <div className="relative mt-2 overflow-x-hidden">
       <Presence present={autoCompleteListShow}>
         <Portal
           container={root}
@@ -411,6 +428,22 @@ const Footer: FC = () => {
           </ScrollArea>
         </Portal>
       </Presence>
+      {replyTarget && (
+        <div className="mb-2 flex w-full min-w-0 max-w-full items-start gap-x-2 overflow-hidden rounded-xl border border-white/45 bg-white/75 px-3 py-2 text-xs text-slate-700 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100">
+          <div className="w-0 min-w-0 flex-1 overflow-hidden">
+            <div className="max-w-full truncate font-semibold">Replying to {replyTarget.username || 'Unknown'}</div>
+            <div className="max-w-full truncate text-slate-600 dark:text-slate-300">{replyPreviewBody}</div>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-6 shrink-0 rounded-md text-slate-500 hover:bg-black/5 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-slate-100"
+            onClick={() => send(chatRoomDomain.command.ClearReplyTargetCommand())}
+          >
+            <XIcon size={14} />
+          </Button>
+        </div>
+      )}
       <div className="relative overflow-hidden rounded-2xl">
         <MessageInput
           ref={shareRef}

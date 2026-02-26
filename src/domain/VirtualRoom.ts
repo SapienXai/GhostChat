@@ -1,6 +1,13 @@
 import { Remesh } from 'remesh'
 import { EMPTY, fromEventPattern, interval, map, merge, mergeMap, of, startWith } from 'rxjs'
-import { type AtUser, type MessageFromInfo, type MessageUser, type NormalMessage, MessageType } from './MessageList'
+import {
+  type AtUser,
+  type MessageFromInfo,
+  type MessageReply,
+  type MessageUser,
+  type NormalMessage,
+  MessageType
+} from './MessageList'
 import { VirtualRoomExtern } from '@/domain/externs/VirtualRoom'
 import { IndexDBStorageExtern } from '@/domain/externs/Storage'
 import UserInfoDomain from '@/domain/UserInfo'
@@ -66,6 +73,7 @@ export interface GlobalTextMessage extends MessageUser {
   sendTime: number
   body: string
   atUsers: AtUser[]
+  reply?: MessageReply
   fromInfo: MessageFromInfo
   originRoomId?: string
 }
@@ -132,6 +140,12 @@ const MessageFromInfoSchema = {
   title: v.string()
 }
 
+const MessageReplySchema = {
+  id: v.string(),
+  body: v.string(),
+  ...MessageUserSchema
+}
+
 const RoomMessageSchema = v.union([
   v.object({
     type: v.literal(SendType.SyncUser),
@@ -157,6 +171,7 @@ const RoomMessageSchema = v.union([
     sendTime: v.number(),
     body: v.string(),
     atUsers: v.optional(v.array(v.object(AtUserSchema)), []),
+    reply: v.optional(v.object(MessageReplySchema)),
     fromInfo: v.object(MessageFromInfoSchema),
     originRoomId: v.optional(v.string()),
     ...MessageUserSchema
@@ -174,6 +189,7 @@ const RoomMessageSchema = v.union([
         sendTime: v.number(),
         body: v.string(),
         atUsers: v.optional(v.array(v.object(AtUserSchema)), []),
+        reply: v.optional(v.object(MessageReplySchema)),
         fromInfo: v.object(MessageFromInfoSchema),
         originRoomId: v.optional(v.string()),
         ...MessageUserSchema
@@ -197,6 +213,7 @@ const toGlobalTextMessage = (message: NormalMessage): GlobalTextMessage => ({
   userAvatar: message.userAvatar,
   body: message.body,
   atUsers: Array.isArray(message.atUsers) ? message.atUsers : [],
+  reply: message.reply,
   fromInfo: message.fromInfo ?? {
     href: '',
     hostname: '',
@@ -219,6 +236,7 @@ const normalizeGlobalMessage = (message: NormalMessage): NormalMessage => ({
   likeUsers: [],
   hateUsers: [],
   atUsers: Array.isArray(message.atUsers) ? message.atUsers : [],
+  reply: message.reply,
   fromInfo:
     message.fromInfo &&
     typeof message.fromInfo.href === 'string' &&
@@ -597,6 +615,7 @@ const VirtualRoomDomain = Remesh.domain({
           likeUsers: [],
           hateUsers: [],
           atUsers: message.atUsers ?? [],
+          reply: message.reply,
           fromInfo: message.fromInfo
         })
         const messageList = get(GlobalTextMessageListState())
@@ -649,6 +668,7 @@ const VirtualRoomDomain = Remesh.domain({
           sendTime: message.sendTime,
           body: message.body,
           atUsers: message.atUsers ?? [],
+          reply: message.reply,
           fromInfo
         }
 

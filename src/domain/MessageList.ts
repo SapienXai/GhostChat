@@ -27,6 +27,11 @@ export interface MessageFromInfo {
   title: string
 }
 
+export interface MessageReply extends MessageUser {
+  id: string
+  body: string
+}
+
 export interface NormalMessage extends MessageUser {
   type: MessageType.Normal
   id: string
@@ -38,6 +43,7 @@ export interface NormalMessage extends MessageUser {
   likeUsers: MessageUser[]
   hateUsers: MessageUser[]
   atUsers: AtUser[]
+  reply?: MessageReply
   fromInfo?: MessageFromInfo
 }
 

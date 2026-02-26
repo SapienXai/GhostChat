@@ -1,5 +1,5 @@
 import { type FC } from 'react'
-import { ExternalLinkIcon, ThumbsDownIcon, ThumbsUpIcon } from 'lucide-react'
+import { CornerUpLeftIcon, ExternalLinkIcon, ThumbsDownIcon, ThumbsUpIcon } from 'lucide-react'
 import LikeButton from './like-button'
 import FormatDate from './format-date'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -17,6 +17,8 @@ export interface MessageItemProps {
   showSourceInfo?: boolean
   onLikeChange?: (checked: boolean) => void
   onHateChange?: (checked: boolean) => void
+  onReply?: (message: NormalMessage) => void
+  onReplyNavigate?: (messageId: string) => void
   className?: string
 }
 
@@ -31,6 +33,7 @@ const MessageItem: FC<MessageItemProps> = (props) => {
     props.onHateChange?.(checked)
   }
   const canReact = Boolean(props.onLikeChange && props.onHateChange)
+  const canReply = Boolean(props.onReply)
 
   let content = typeof props.data.body === 'string' ? props.data.body : ''
   const sourceHostname =
@@ -50,6 +53,9 @@ const MessageItem: FC<MessageItemProps> = (props) => {
       ? props.data.fromInfo.href
       : undefined
   const showSourceInfo = Boolean(props.showSourceInfo && sourceHostname && sourceHref)
+  const replyBody =
+    typeof props.data.reply?.body === 'string' ? props.data.reply.body.replace(/\s+/g, ' ').trim() : undefined
+  const hasReply = Boolean(props.data.reply?.id && replyBody)
 
   // Check if the field exists, compatible with old data
   if (Array.isArray(props.data.atUsers)) {
@@ -72,7 +78,9 @@ const MessageItem: FC<MessageItemProps> = (props) => {
 
   return (
     <div
+      id={`gc-msg-${props.data.id}`}
       data-index={props.index}
+      data-message-id={props.data.id}
       className={cn(
         'mx-2 mb-2 flex first:mt-2 last:mb-2',
         props.isOwnMessage ? 'justify-end' : 'justify-start',
@@ -123,34 +131,70 @@ const MessageItem: FC<MessageItemProps> = (props) => {
               </a>
             </div>
           )}
+          {hasReply && (
+            <button
+              type="button"
+              onClick={() => props.data.reply?.id && props.onReplyNavigate?.(props.data.reply.id)}
+              className={cn(
+                'mt-1 w-full rounded-md border-l-2 px-2 py-1 text-left text-xs',
+                props.isOwnMessage
+                  ? 'border-slate-400/80 bg-slate-200/70 dark:border-slate-300/50 dark:bg-slate-600/40'
+                  : 'border-slate-300/90 bg-white/75 dark:border-slate-500/50 dark:bg-slate-700/40',
+                props.onReplyNavigate
+                  ? 'cursor-pointer transition-colors hover:bg-white/90 dark:hover:bg-slate-700/65'
+                  : 'cursor-default'
+              )}
+            >
+              <div className="truncate font-semibold text-slate-700 dark:text-slate-100">
+                {typeof props.data.reply?.username === 'string' && props.data.reply.username.trim().length > 0
+                  ? props.data.reply.username
+                  : 'Unknown'}
+              </div>
+              <div className="truncate text-slate-600 dark:text-slate-300">{replyBody}</div>
+            </button>
+          )}
           <div className="pb-2 pt-1">
             <Markdown>{content}</Markdown>
           </div>
-          {canReact && (
+          {(canReact || canReply) && (
             <div
               className={cn(
-                'grid grid-flow-col gap-x-2 leading-none',
+                'flex items-center gap-x-2 leading-none',
                 props.isOwnMessage ? 'justify-end' : 'justify-start'
               )}
             >
-              <LikeButton
-                checked={props.like}
-                onChange={(checked) => handleLikeChange(checked)}
-                count={Array.isArray(props.data.likeUsers) ? props.data.likeUsers.length : 0}
-              >
-                <LikeButton.Icon>
-                  <ThumbsUpIcon size={14}></ThumbsUpIcon>
-                </LikeButton.Icon>
-              </LikeButton>
-              <LikeButton
-                checked={props.hate}
-                onChange={(checked) => handleHateChange(checked)}
-                count={Array.isArray(props.data.hateUsers) ? props.data.hateUsers.length : 0}
-              >
-                <LikeButton.Icon>
-                  <ThumbsDownIcon size={14}></ThumbsDownIcon>
-                </LikeButton.Icon>
-              </LikeButton>
+              {canReply && (
+                <button
+                  type="button"
+                  onClick={() => props.onReply?.(props.data)}
+                  className="inline-flex items-center gap-x-1 rounded-md px-1.5 py-1 text-xs text-slate-600 transition-colors hover:bg-black/5 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-slate-100"
+                >
+                  <CornerUpLeftIcon size={12} />
+                  <span>Reply</span>
+                </button>
+              )}
+              {canReact && (
+                <>
+                  <LikeButton
+                    checked={props.like}
+                    onChange={(checked) => handleLikeChange(checked)}
+                    count={Array.isArray(props.data.likeUsers) ? props.data.likeUsers.length : 0}
+                  >
+                    <LikeButton.Icon>
+                      <ThumbsUpIcon size={14}></ThumbsUpIcon>
+                    </LikeButton.Icon>
+                  </LikeButton>
+                  <LikeButton
+                    checked={props.hate}
+                    onChange={(checked) => handleHateChange(checked)}
+                    count={Array.isArray(props.data.hateUsers) ? props.data.hateUsers.length : 0}
+                  >
+                    <LikeButton.Icon>
+                      <ThumbsDownIcon size={14}></ThumbsDownIcon>
+                    </LikeButton.Icon>
+                  </LikeButton>
+                </>
+              )}
             </div>
           )}
         </div>

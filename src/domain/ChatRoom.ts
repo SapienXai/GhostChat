@@ -1,6 +1,6 @@
 import { Remesh } from 'remesh'
 import { map, merge, of, EMPTY, mergeMap, fromEventPattern } from 'rxjs'
-import type { AtUser, MessageFromInfo, NormalMessage } from './MessageList'
+import type { AtUser, MessageFromInfo, MessageReply, NormalMessage } from './MessageList'
 import { type MessageUser } from './MessageList'
 import { ChatRoomExtern } from '@/domain/externs/ChatRoom'
 import type { RoomScope } from '@/domain/externs/ChatRoom'
@@ -60,6 +60,7 @@ export interface TextMessage extends MessageUser {
   body: string
   sendTime: number
   atUsers: AtUser[]
+  reply?: MessageReply
   fromInfo?: MessageFromInfo
 }
 
@@ -107,6 +108,12 @@ const MessageFromInfoSchema = {
   title: v.string()
 }
 
+const MessageReplySchema = {
+  id: v.string(),
+  body: v.string(),
+  ...MessageUserSchema
+}
+
 const NormalMessageSchema = {
   id: v.string(),
   peerId: v.optional(v.string()),
@@ -117,6 +124,7 @@ const NormalMessageSchema = {
   likeUsers: v.optional(v.array(v.object(MessageUserSchema)), []),
   hateUsers: v.optional(v.array(v.object(MessageUserSchema)), []),
   atUsers: v.optional(v.array(v.object(AtUserSchema)), []),
+  reply: v.optional(v.object(MessageReplySchema)),
   fromInfo: v.optional(v.object(MessageFromInfoSchema)),
   ...MessageUserSchema
 }
@@ -129,6 +137,7 @@ const RoomMessageSchema = v.union([
     body: v.string(),
     sendTime: v.number(),
     atUsers: v.optional(v.array(v.object(AtUserSchema)), []),
+    reply: v.optional(v.object(MessageReplySchema)),
     fromInfo: v.optional(v.object(MessageFromInfoSchema)),
     ...MessageUserSchema
   }),
@@ -214,6 +223,18 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.RoomScopeQuery',
       impl: ({ get }) => {
         return get(RoomScopeState())
+      }
+    })
+
+    const ReplyTargetState = domain.state<MessageReply | null>({
+      name: 'Room.ReplyTargetState',
+      default: null
+    })
+
+    const ReplyTargetQuery = domain.query({
+      name: 'Room.ReplyTargetQuery',
+      impl: ({ get }) => {
+        return get(ReplyTargetState())
       }
     })
 
@@ -405,13 +426,27 @@ const ChatRoomDomain = Remesh.domain({
         if (get(RoomScopeQuery()) === scope) {
           return null
         }
-        return [ApplyRoomScopeCommand(scope)]
+        return [ApplyRoomScopeCommand(scope), ReplyTargetState().new(null)]
+      }
+    })
+
+    const SetReplyTargetCommand = domain.command({
+      name: 'Room.SetReplyTargetCommand',
+      impl: (_, reply: MessageReply) => {
+        return [ReplyTargetState().new(reply)]
+      }
+    })
+
+    const ClearReplyTargetCommand = domain.command({
+      name: 'Room.ClearReplyTargetCommand',
+      impl: () => {
+        return [ReplyTargetState().new(null)]
       }
     })
 
     const SendTextMessageCommand = domain.command({
       name: 'Room.SendTextMessageCommand',
-      impl: ({ get }, message: string | { body: string; atUsers: AtUser[] }) => {
+      impl: ({ get }, message: string | { body: string; atUsers: AtUser[]; reply?: MessageReply }) => {
         const self = get(SelfUserQuery())
         const siteInfo = getSiteInfo()
         const fromInfo: MessageFromInfo = {
@@ -429,6 +464,7 @@ const ChatRoomDomain = Remesh.domain({
           sendTime: Date.now(),
           body: typeof message === 'string' ? message : message.body,
           atUsers: typeof message === 'string' ? [] : message.atUsers,
+          reply: typeof message === 'string' ? undefined : message.reply,
           fromInfo
         }
 
@@ -440,11 +476,16 @@ const ChatRoomDomain = Remesh.domain({
           likeUsers: [],
           hateUsers: [],
           atUsers: typeof message === 'string' ? [] : message.atUsers,
+          reply: typeof message === 'string' ? undefined : message.reply,
           fromInfo
         }
 
         chatRoomExtern.sendMessage(textMessage)
-        return [messageListDomain.command.CreateItemCommand(listMessage), SendTextMessageEvent(textMessage)]
+        return [
+          messageListDomain.command.CreateItemCommand(listMessage),
+          SendTextMessageEvent(textMessage),
+          ReplyTargetState().new(null)
+        ]
       }
     })
 
@@ -818,6 +859,7 @@ const ChatRoomDomain = Remesh.domain({
                       likeUsers: [],
                       hateUsers: [],
                       atUsers: message.atUsers ?? [],
+                      reply: message.reply,
                       fromInfo: message.fromInfo
                     })
                   )
@@ -944,6 +986,7 @@ const ChatRoomDomain = Remesh.domain({
         ConnectionStateQuery,
         JoinIsFinishedQuery,
         RoomScopeQuery,
+        ReplyTargetQuery,
         TypingUsersQuery,
         AwayUsersQuery
       },
@@ -951,6 +994,8 @@ const ChatRoomDomain = Remesh.domain({
         JoinRoomCommand,
         LeaveRoomCommand,
         SwitchRoomScopeCommand,
+        SetReplyTargetCommand,
+        ClearReplyTargetCommand,
         SendTextMessageCommand,
         SendLikeMessageCommand,
         SendHateMessageCommand,

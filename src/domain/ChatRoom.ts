@@ -397,37 +397,7 @@ const ChatRoomDomain = Remesh.domain({
       }
     })
 
-    ApplyRoomScopeCommand.after((_, scope) => {
-      chatRoomExtern.setScope(scope)
-      return null
-    })
-
-    const ReconnectRoomCommand = domain.command({
-      name: 'Room.ReconnectRoomCommand',
-      impl: ({ get }, scope: RoomScope) => {
-        const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
-        return [
-          RoomScopeState().new(scope),
-          JoinStatusModule.command.SetInitialCommand(),
-          SetConnectionStateCommand('connecting'),
-          UserListState().new([]),
-          UpdateUserListCommand({
-            type: 'create',
-            user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
-          }),
-          UpdateTypingUsersCommand(new Set()),
-          UpdateAwayUsersCommand(new Set()),
-          messageListDomain.command.ClearListCommand()
-        ]
-      }
-    })
-
-    ReconnectRoomCommand.after((_, scope) => {
-      chatRoomExtern.leaveRoom()
-      chatRoomExtern.setScope(scope)
-      chatRoomExtern.joinRoom()
-      return null
-    })
+    ApplyRoomScopeCommand.after(() => null)
 
     const SwitchRoomScopeCommand = domain.command({
       name: 'Room.SwitchRoomScopeCommand',
@@ -435,20 +405,7 @@ const ChatRoomDomain = Remesh.domain({
         if (get(RoomScopeQuery()) === scope) {
           return null
         }
-
-        const shouldReconnect = get(JoinStatusModule.query.IsFinishedQuery())
-
-        if (shouldReconnect) {
-          return [ReconnectRoomCommand(scope)]
-        }
-
-        return [
-          ApplyRoomScopeCommand(scope),
-          UserListState().new([]),
-          UpdateTypingUsersCommand(new Set()),
-          UpdateAwayUsersCommand(new Set()),
-          messageListDomain.command.ClearListCommand()
-        ]
+        return [ApplyRoomScopeCommand(scope)]
       }
     })
 
@@ -478,6 +435,7 @@ const ChatRoomDomain = Remesh.domain({
         const listMessage: NormalMessage = {
           ...textMessage,
           type: MessageType.Normal,
+          roomScope: 'local',
           receiveTime: Date.now(),
           likeUsers: [],
           hateUsers: [],
@@ -855,6 +813,7 @@ const ChatRoomDomain = Remesh.domain({
                     messageListDomain.command.CreateItemCommand({
                       ...message,
                       type: MessageType.Normal,
+                      roomScope: 'local',
                       receiveTime: Date.now(),
                       likeUsers: [],
                       hateUsers: [],

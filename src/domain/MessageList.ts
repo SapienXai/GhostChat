@@ -31,6 +31,7 @@ export interface NormalMessage extends MessageUser {
   type: MessageType.Normal
   id: string
   peerId?: string
+  roomScope?: 'local' | 'global'
   body: string
   sendTime: number
   receiveTime: number

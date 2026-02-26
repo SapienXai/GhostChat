@@ -30,6 +30,7 @@ const MessageItem: FC<MessageItemProps> = (props) => {
   const handleHateChange = (checked: boolean) => {
     props.onHateChange?.(checked)
   }
+  const canReact = Boolean(props.onLikeChange && props.onHateChange)
 
   let content = typeof props.data.body === 'string' ? props.data.body : ''
   const sourceHostname =
@@ -125,31 +126,33 @@ const MessageItem: FC<MessageItemProps> = (props) => {
           <div className="pb-2 pt-1">
             <Markdown>{content}</Markdown>
           </div>
-          <div
-            className={cn(
-              'grid grid-flow-col gap-x-2 leading-none',
-              props.isOwnMessage ? 'justify-end' : 'justify-start'
-            )}
-          >
-            <LikeButton
-              checked={props.like}
-              onChange={(checked) => handleLikeChange(checked)}
-              count={Array.isArray(props.data.likeUsers) ? props.data.likeUsers.length : 0}
+          {canReact && (
+            <div
+              className={cn(
+                'grid grid-flow-col gap-x-2 leading-none',
+                props.isOwnMessage ? 'justify-end' : 'justify-start'
+              )}
             >
-              <LikeButton.Icon>
-                <ThumbsUpIcon size={14}></ThumbsUpIcon>
-              </LikeButton.Icon>
-            </LikeButton>
-            <LikeButton
-              checked={props.hate}
-              onChange={(checked) => handleHateChange(checked)}
-              count={Array.isArray(props.data.hateUsers) ? props.data.hateUsers.length : 0}
-            >
-              <LikeButton.Icon>
-                <ThumbsDownIcon size={14}></ThumbsDownIcon>
-              </LikeButton.Icon>
-            </LikeButton>
-          </div>
+              <LikeButton
+                checked={props.like}
+                onChange={(checked) => handleLikeChange(checked)}
+                count={Array.isArray(props.data.likeUsers) ? props.data.likeUsers.length : 0}
+              >
+                <LikeButton.Icon>
+                  <ThumbsUpIcon size={14}></ThumbsUpIcon>
+                </LikeButton.Icon>
+              </LikeButton>
+              <LikeButton
+                checked={props.hate}
+                onChange={(checked) => handleHateChange(checked)}
+                count={Array.isArray(props.data.hateUsers) ? props.data.hateUsers.length : 0}
+              >
+                <LikeButton.Icon>
+                  <ThumbsDownIcon size={14}></ThumbsDownIcon>
+                </LikeButton.Icon>
+              </LikeButton>
+            </div>
+          )}
         </div>
       </div>
     </div>

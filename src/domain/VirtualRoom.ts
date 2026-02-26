@@ -1,6 +1,6 @@
 import { Remesh } from 'remesh'
 import { EMPTY, fromEventPattern, interval, map, merge, mergeMap, of, startWith } from 'rxjs'
-import { type MessageUser } from './MessageList'
+import { type AtUser, type MessageFromInfo, type MessageUser, type NormalMessage, MessageType } from './MessageList'
 import { VirtualRoomExtern } from '@/domain/externs/VirtualRoom'
 import UserInfoDomain from '@/domain/UserInfo'
 import { upsert } from '@/utils'
@@ -9,7 +9,7 @@ import StatusModule from '@/domain/modules/Status'
 import * as v from 'valibot'
 import type { SiteInfo } from '@/utils/getSiteInfo'
 import getSiteInfo from '@/utils/getSiteInfo'
-import ChatRoomDomain from '@/domain/ChatRoom'
+import ChatRoomDomain, { type TextMessage } from '@/domain/ChatRoom'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const MESSAGE_ID_TTL_MS = 2 * DAY_MS
@@ -18,7 +18,8 @@ const STATS_BROADCAST_INTERVAL_MS = 30 * 1000
 
 export enum SendType {
   SyncUser = 'SyncUser',
-  SyncStats = 'SyncStats'
+  SyncStats = 'SyncStats',
+  GlobalText = 'GlobalText'
 }
 
 export interface FromInfo extends SiteInfo {
@@ -53,6 +54,17 @@ export interface SyncStatsMessage extends MessageUser {
   stats: SiteStatPayload
 }
 
+export interface GlobalTextMessage extends MessageUser {
+  type: SendType.GlobalText
+  id: string
+  peerId: string
+  sendTime: number
+  body: string
+  atUsers: AtUser[]
+  fromInfo: MessageFromInfo
+  originRoomId?: string
+}
+
 export interface SitePeerSnapshot extends SiteStatPayload {
   peerId: string
   sendTime: number
@@ -63,7 +75,7 @@ export interface SiteStats extends SiteStatPayload {
   updatedAt: number
 }
 
-export type RoomMessage = SyncUserMessage | SyncStatsMessage
+export type RoomMessage = SyncUserMessage | SyncStatsMessage | GlobalTextMessage
 
 export type RoomUser = MessageUser & { peerIds: string[]; fromInfos: FromInfo[]; joinTime: number }
 
@@ -95,6 +107,18 @@ const SiteStatPayloadSchema = {
   lastActivityAt: v.number()
 }
 
+const AtUserSchema = {
+  positions: v.array(v.tuple([v.number(), v.number()])),
+  ...MessageUserSchema
+}
+
+const MessageFromInfoSchema = {
+  href: v.string(),
+  hostname: v.string(),
+  origin: v.string(),
+  title: v.string()
+}
+
 const RoomMessageSchema = v.union([
   v.object({
     type: v.literal(SendType.SyncUser),
@@ -111,6 +135,17 @@ const RoomMessageSchema = v.union([
     peerId: v.string(),
     sendTime: v.number(),
     stats: v.object(SiteStatPayloadSchema),
+    ...MessageUserSchema
+  }),
+  v.object({
+    type: v.literal(SendType.GlobalText),
+    id: v.string(),
+    peerId: v.string(),
+    sendTime: v.number(),
+    body: v.string(),
+    atUsers: v.optional(v.array(v.object(AtUserSchema)), []),
+    fromInfo: v.object(MessageFromInfoSchema),
+    originRoomId: v.optional(v.string()),
     ...MessageUserSchema
   })
 ])
@@ -229,6 +264,18 @@ const VirtualRoomDomain = Remesh.domain({
       name: 'Room.SiteStatsQuery',
       impl: ({ get }) => {
         return getSiteStats(get(SiteSnapshotsState()), Date.now())
+      }
+    })
+
+    const GlobalTextMessageListState = domain.state<NormalMessage[]>({
+      name: 'Room.GlobalTextMessageListState',
+      default: []
+    })
+
+    const GlobalTextMessageListQuery = domain.query({
+      name: 'Room.GlobalTextMessageListQuery',
+      impl: ({ get }) => {
+        return get(GlobalTextMessageListState()).toSorted((a, b) => a.sendTime - b.sendTime)
       }
     })
 
@@ -453,12 +500,72 @@ const VirtualRoomDomain = Remesh.domain({
       }
     })
 
+    const UpsertGlobalTextMessageCommand = domain.command({
+      name: 'Room.UpsertGlobalTextMessageCommand',
+      impl: ({ get }, message: GlobalTextMessage) => {
+        const globalMessage: NormalMessage = {
+          id: message.id,
+          type: MessageType.Normal,
+          roomScope: 'global',
+          peerId: message.peerId,
+          userId: message.userId,
+          username: message.username,
+          userAvatar: message.userAvatar,
+          body: message.body,
+          sendTime: message.sendTime,
+          receiveTime: Date.now(),
+          likeUsers: [],
+          hateUsers: [],
+          atUsers: message.atUsers ?? [],
+          fromInfo: message.fromInfo
+        }
+        const messageList = get(GlobalTextMessageListState())
+        return [GlobalTextMessageListState().new(upsert(messageList, globalMessage, 'id'))]
+      }
+    })
+
+    const SendGlobalTextMessageCommand = domain.command({
+      name: 'Room.SendGlobalTextMessageCommand',
+      impl: ({ get }, message: TextMessage) => {
+        if (get(JoinStatusModule.query.IsInitialQuery())) {
+          return null
+        }
+
+        const self = get(SelfUserQuery())
+        const siteInfo = getSiteInfo()
+        const fromInfo: MessageFromInfo = message.fromInfo ?? {
+          href: siteInfo.href,
+          hostname: siteInfo.hostname,
+          origin: siteInfo.origin,
+          title: siteInfo.title
+        }
+
+        const globalTextMessage: GlobalTextMessage = {
+          ...self,
+          type: SendType.GlobalText,
+          id: message.id,
+          peerId: virtualRoomExtern.peerId,
+          sendTime: message.sendTime,
+          body: message.body,
+          atUsers: message.atUsers ?? [],
+          fromInfo
+        }
+
+        virtualRoomExtern.sendMessage(globalTextMessage)
+        return [SendGlobalTextMessageEvent(globalTextMessage), UpsertGlobalTextMessageCommand(globalTextMessage)]
+      }
+    })
+
     const SendSyncUserMessageEvent = domain.event<SyncUserMessage>({
       name: 'Room.SendSyncUserMessageEvent'
     })
 
     const SendSyncStatsMessageEvent = domain.event<SyncStatsMessage>({
       name: 'Room.SendSyncStatsMessageEvent'
+    })
+
+    const SendGlobalTextMessageEvent = domain.event<GlobalTextMessage>({
+      name: 'Room.SendGlobalTextMessageEvent'
     })
 
     const JoinRoomEvent = domain.event<string>({
@@ -491,6 +598,10 @@ const VirtualRoomDomain = Remesh.domain({
 
     const OnErrorEvent = domain.event<Error>({
       name: 'Room.OnErrorEvent'
+    })
+
+    const OnGlobalTextMessageEvent = domain.event<GlobalTextMessage>({
+      name: 'Room.OnGlobalTextMessageEvent'
     })
 
     domain.effect({
@@ -529,8 +640,10 @@ const VirtualRoomDomain = Remesh.domain({
                 case SendType.SyncStats:
                   return of(UpsertSiteSnapshotCommand(message))
 
+                case SendType.GlobalText:
+                  return of(OnGlobalTextMessageEvent(message), UpsertGlobalTextMessageCommand(message))
+
                 default:
-                  console.warn('Unsupported message type', message)
                   return EMPTY
               }
             })()
@@ -546,7 +659,12 @@ const VirtualRoomDomain = Remesh.domain({
       name: 'Room.OnTextActivityEffect',
       impl: ({ fromEvent }) => {
         const onLocalText$ = fromEvent(chatRoomDomain.event.SendTextMessageEvent).pipe(
-          map((message) => RecordLocalTextActivityCommand({ id: message.id, sendTime: message.sendTime }))
+          mergeMap((message) =>
+            of(
+              RecordLocalTextActivityCommand({ id: message.id, sendTime: message.sendTime }),
+              SendGlobalTextMessageCommand(message)
+            )
+          )
         )
 
         const onRemoteText$ = fromEvent(chatRoomDomain.event.OnTextMessageEvent).pipe(
@@ -619,22 +737,26 @@ const VirtualRoomDomain = Remesh.domain({
         PeerIdQuery,
         UserListQuery,
         SiteStatsQuery,
+        GlobalTextMessageListQuery,
         JoinIsFinishedQuery
       },
       command: {
         JoinRoomCommand,
         LeaveRoomCommand,
         SendSyncUserMessageCommand,
-        SendSyncStatsMessageCommand
+        SendSyncStatsMessageCommand,
+        SendGlobalTextMessageCommand
       },
       event: {
         SendSyncUserMessageEvent,
         SendSyncStatsMessageEvent,
+        SendGlobalTextMessageEvent,
         JoinRoomEvent,
         SelfJoinRoomEvent,
         LeaveRoomEvent,
         SelfLeaveRoomEvent,
         OnMessageEvent,
+        OnGlobalTextMessageEvent,
         OnJoinRoomEvent,
         OnLeaveRoomEvent,
         OnErrorEvent

@@ -31,10 +31,11 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
   const userInfoDomain = useRemeshDomain(UserInfoDomain())
   const userInfo = useRemeshQuery(userInfoDomain.query.UserInfoQuery())
   const virtualUserList = useRemeshQuery(virtualRoomDomain.query.UserListQuery())
+  const globalTextMessageList = useRemeshQuery(virtualRoomDomain.query.GlobalTextMessageListQuery())
   const siteStats = useRemeshQuery(virtualRoomDomain.query.SiteStatsQuery())
   const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
   const _messageList = useRemeshQuery(messageListDomain.query.ListQuery())
-  const messageList = _messageList
+  const localMessageList = _messageList
     .map((message) => {
       if (message.type === MessageType.Normal) {
         const likeUsers = Array.isArray(message.likeUsers) ? message.likeUsers : []
@@ -78,7 +79,31 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
         body: typeof message.body === 'string' ? message.body : ''
       }
     })
+    .filter((message) => message.type !== MessageType.Normal || message.roomScope !== 'global')
     .toSorted((a, b) => a.sendTime - b.sendTime)
+  const globalMessageList = globalTextMessageList
+    .map((message) => ({
+      ...message,
+      username:
+        typeof message.username === 'string' && message.username.trim().length > 0 ? message.username : 'Unknown',
+      userAvatar: typeof message.userAvatar === 'string' ? message.userAvatar : '',
+      body: typeof message.body === 'string' ? message.body : '',
+      atUsers: Array.isArray(message.atUsers) ? message.atUsers : [],
+      fromInfo:
+        message.fromInfo &&
+        typeof message.fromInfo.href === 'string' &&
+        typeof message.fromInfo.hostname === 'string' &&
+        typeof message.fromInfo.origin === 'string' &&
+        typeof message.fromInfo.title === 'string'
+          ? message.fromInfo
+          : undefined,
+      likeUsers: [],
+      hateUsers: [],
+      like: false,
+      hate: false
+    }))
+    .toSorted((a, b) => a.sendTime - b.sendTime)
+  const messageList = roomScope === 'global' ? globalMessageList : localMessageList
 
   const handleLikeChange = (messageId: string) => {
     send(chatRoomDomain.command.SendLikeMessageCommand(messageId))
@@ -170,8 +195,8 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
                   hate={message.hate}
                   isOwnMessage={message.userId === userInfo?.id}
                   showSourceInfo={roomScope === 'global'}
-                  onLikeChange={() => handleLikeChange(message.id)}
-                  onHateChange={() => handleHateChange(message.id)}
+                  onLikeChange={roomScope === 'local' ? () => handleLikeChange(message.id) : undefined}
+                  onHateChange={roomScope === 'local' ? () => handleHateChange(message.id) : undefined}
                   className="duration-300 animate-in fade-in-0"
                 />
               )

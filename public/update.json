@@ -1,10 +1,10 @@
 {
-  "version": "0.6.2",
-  "downloadUrl": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.2/ghost-chat-0.6.2-chrome.zip",
+  "version": "0.6.3",
+  "downloadUrl": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.3/ghost-chat-0.6.3-chrome.zip",
   "downloads": {
-    "chrome": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.2/ghost-chat-0.6.2-chrome.zip",
-    "edge": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.2/ghost-chat-0.6.2-edge.zip",
-    "firefox": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.2/ghost-chat-0.6.2-firefox.zip"
+    "chrome": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.3/ghost-chat-0.6.3-chrome.zip",
+    "edge": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.3/ghost-chat-0.6.3-edge.zip",
+    "firefox": "https://github.com/SapienXai/GhostChat/releases/download/v0.6.3/ghost-chat-0.6.3-firefox.zip"
   },
-  "notesUrl": "https://github.com/SapienXai/GhostChat/releases/tag/v0.6.2"
+  "notesUrl": "https://github.com/SapienXai/GhostChat/releases/tag/v0.6.3"
 }

@@ -37,6 +37,7 @@ export interface NormalMessage extends MessageUser {
   id: string
   peerId?: string
   roomScope?: 'local' | 'global'
+  localRoomId?: string
   body: string
   sendTime: number
   receiveTime: number
@@ -50,6 +51,7 @@ export interface NormalMessage extends MessageUser {
 export interface PromptMessage extends MessageUser {
   type: MessageType.Prompt
   id: string
+  localRoomId?: string
   body: string
   sendTime: number
   receiveTime: number

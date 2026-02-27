@@ -1,4 +1,4 @@
-import { type FC, useEffect } from 'react'
+import { type FC, useCallback, useEffect, useMemo } from 'react'
 import { useRemeshDomain, useRemeshQuery, useRemeshSend } from 'remesh-react'
 import { Button } from '@/components/ui/button'
 
@@ -10,11 +10,17 @@ import UserInfoDomain from '@/domain/UserInfo'
 import ChatRoomDomain from '@/domain/ChatRoom'
 import MessageListDomain, { type NormalMessage, MessageType } from '@/domain/MessageList'
 import VirtualRoomDomain from '@/domain/VirtualRoom'
+import MessageInputDomain from '@/domain/MessageInput'
 import Leaderboard from './leaderboard'
 import LeaderboardFooter from './leaderboard-footer'
+import GhostTownCtaPanel from './ghost-town-cta-panel'
+import { selectSuggestedRooms, type SeedDomain } from './suggested-rooms'
 import { cn, getSiteInfo } from '@/utils'
 import { getRootNode } from '@/utils'
 import type { RoomScope } from '@/domain/externs/ChatRoom'
+import { ENABLE_GHOST_TOWN_CTA } from '@/constants/config'
+import { GLOBAL_LOBBY_ROOM_ID, createDomainRoomId, normalizeRoomHostname } from '@/utils/roomRouting'
+import seedDomains from '@/data/seedDomains.json'
 
 export type MainTab = 'chat' | 'trending' | 'new-rising'
 
@@ -24,18 +30,25 @@ export interface MainProps {
   leaderboardEnabled?: boolean
 }
 
+const seedDomainList = seedDomains as SeedDomain[]
+
 const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true }) => {
   const send = useRemeshSend()
   const messageListDomain = useRemeshDomain(MessageListDomain())
   const chatRoomDomain = useRemeshDomain(ChatRoomDomain())
   const virtualRoomDomain = useRemeshDomain(VirtualRoomDomain())
+  const messageInputDomain = useRemeshDomain(MessageInputDomain())
   const userInfoDomain = useRemeshDomain(UserInfoDomain())
   const userInfo = useRemeshQuery(userInfoDomain.query.UserInfoQuery())
+  const chatUserList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
   const virtualUserList = useRemeshQuery(virtualRoomDomain.query.UserListQuery())
   const globalTextMessageList = useRemeshQuery(virtualRoomDomain.query.GlobalTextMessageListQuery())
   const siteStats = useRemeshQuery(virtualRoomDomain.query.SiteStatsQuery())
   const siteInfo = getSiteInfo()
   const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
+  const activeLocalRoomId = useRemeshQuery(chatRoomDomain.query.ActiveLocalRoomIdQuery())
+  const draftMessage = useRemeshQuery(messageInputDomain.query.MessageQuery())
+  const currentDomainRoomId = createDomainRoomId(siteInfo.hostname)
   const _messageList = useRemeshQuery(messageListDomain.query.ListQuery())
   const localMessageList = _messageList
     .map((message) => {
@@ -81,7 +94,17 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
         body: typeof message.body === 'string' ? message.body : ''
       }
     })
-    .filter((message) => message.type !== MessageType.Normal || message.roomScope !== 'global')
+    .filter((message) => {
+      if (message.type === MessageType.Normal && message.roomScope === 'global') {
+        return false
+      }
+
+      if (typeof message.localRoomId === 'string') {
+        return message.localRoomId === activeLocalRoomId
+      }
+
+      return activeLocalRoomId === currentDomainRoomId
+    })
     .toSorted((a, b) => a.sendTime - b.sendTime)
   const globalMessageList = globalTextMessageList
     .map((message) => ({
@@ -105,14 +128,17 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
       hate: false
     }))
     .toSorted((a, b) => a.sendTime - b.sendTime)
-  const localScopedGlobalMessageList = globalMessageList.filter((message) => {
-    const origin = message.fromInfo?.origin
-    const hostname = message.fromInfo?.hostname
-    if (typeof origin === 'string' && origin.length) {
-      return origin === siteInfo.origin
-    }
-    return typeof hostname === 'string' && hostname.length ? hostname === siteInfo.hostname : false
-  })
+  const localScopedGlobalMessageList =
+    activeLocalRoomId !== currentDomainRoomId
+      ? []
+      : globalMessageList.filter((message) => {
+          const origin = message.fromInfo?.origin
+          const hostname = message.fromInfo?.hostname
+          if (typeof origin === 'string' && origin.length) {
+            return origin === siteInfo.origin
+          }
+          return typeof hostname === 'string' && hostname.length ? hostname === siteInfo.hostname : false
+        })
   const localCombinedMessageList = (() => {
     const merged = new Map<string, (typeof localMessageList)[number]>()
     for (const message of localScopedGlobalMessageList) {
@@ -159,6 +185,43 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
   const isGlobalScope = roomScope === 'global'
+  const humansCount = isGlobalScope ? virtualUserList.length : chatUserList.length
+  const messageCount = messageList.length
+  const isEmptyRoom = messageCount === 0 || humansCount <= 1
+
+  const suggestedRooms = useMemo(
+    () =>
+      selectSuggestedRooms({
+        seedDomains: seedDomainList,
+        currentHostname: siteInfo.hostname,
+        count: 3
+      }),
+    [siteInfo.hostname]
+  )
+
+  const handleStartFirstMessage = useCallback(() => {
+    if (messageCount === 0 && !draftMessage.trim()) {
+      send(messageInputDomain.command.InputCommand('Hey everyone, kicking this room off.'))
+    }
+
+    const root = getRootNode()
+    const input = root.querySelector<HTMLTextAreaElement>('[data-ghostchat-message-input="true"]')
+    if (!input) return
+    input.focus()
+    const cursor = input.value.length
+    input.setSelectionRange(cursor, cursor)
+  }, [draftMessage, messageCount, messageInputDomain, send])
+
+  const handleJoinGlobalLobby = useCallback(() => {
+    send(chatRoomDomain.command.RouteToRoomCommand(GLOBAL_LOBBY_ROOM_ID))
+    onTabChange('chat')
+  }, [chatRoomDomain, onTabChange, send])
+
+  const handleJoinSuggestedRoom = useCallback((hostname: string) => {
+    const normalizedHostname = normalizeRoomHostname(hostname)
+    if (!normalizedHostname) return
+    window.open(`https://${normalizedHostname}`, '_blank', 'noopener,noreferrer')
+  }, [])
 
   useEffect(() => {
     if (!leaderboardEnabled && activeTab !== 'chat') {
@@ -227,6 +290,16 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
 
       {activeTab === 'chat' ? (
         <MessageList>
+          {ENABLE_GHOST_TOWN_CTA && isEmptyRoom && (
+            <GhostTownCtaPanel
+              messageCount={messageCount}
+              humansCount={humansCount}
+              suggestedRooms={suggestedRooms}
+              onStartFirstMessage={handleStartFirstMessage}
+              onJoinGlobalLobby={handleJoinGlobalLobby}
+              onJoinSuggestedRoom={handleJoinSuggestedRoom}
+            />
+          )}
           {messageList.map((message, index) => {
             if (message.type === MessageType.Normal) {
               return (

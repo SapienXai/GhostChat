@@ -8,6 +8,7 @@ export interface ChatRoom {
   readonly roomId: string
   readonly scope: RoomScope
   joinRoom: () => ChatRoom
+  setLocalRoomId: (roomId: string) => ChatRoom
   setScope: (scope: RoomScope) => ChatRoom
   onReady: (callback: (roomId: string) => void) => ChatRoom
   sendMessage: (message: RoomMessage, id?: string | string[]) => ChatRoom
@@ -25,6 +26,9 @@ export const ChatRoomExtern = Remesh.extern<ChatRoom>({
     scope: 'local',
     joinRoom: () => {
       throw new Error('"joinRoom" not implemented.')
+    },
+    setLocalRoomId: () => {
+      throw new Error('"setLocalRoomId" not implemented.')
     },
     setScope: () => {
       throw new Error('"setScope" not implemented.')

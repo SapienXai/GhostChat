@@ -2,11 +2,10 @@ import type { Room } from '@rtco/client'
 
 import { ChatRoomExtern } from '@/domain/externs/ChatRoom'
 import type { RoomScope } from '@/domain/externs/ChatRoom'
-import { stringToHex } from '@/utils'
 import EventHub from '@resreq/event-hub'
 import type { RoomMessage } from '@/domain/ChatRoom'
 import { JSONR } from '@/utils'
-import { GLOBAL_CHAT_ROOM_ID } from '@/constants/config'
+import { GLOBAL_LOBBY_ROOM_ID, getCurrentDomainRoomId, toTransportRoomId } from '@/utils/roomRouting'
 import Peer from './Peer'
 
 export interface Config {
@@ -17,7 +16,7 @@ export interface Config {
 
 class ChatRoom extends EventHub {
   readonly peer: Peer
-  private readonly localRoomId: string
+  private localRoomId: string
   private readonly globalRoomId: string
   private currentScope: RoomScope = 'local'
   readonly peerId: string
@@ -51,6 +50,7 @@ class ChatRoom extends EventHub {
     this.globalRoomId = config.globalRoomId
     this.peerId = config.peer.id
     this.joinRoom = this.joinRoom.bind(this)
+    this.setLocalRoomId = this.setLocalRoomId.bind(this)
     this.setScope = this.setScope.bind(this)
     this.onReady = this.onReady.bind(this)
     this.sendMessage = this.sendMessage.bind(this)
@@ -68,6 +68,25 @@ class ChatRoom extends EventHub {
     this.currentScope = scope
     this.clearConnectTimeout()
     this.leaveActiveRoom()
+    return this
+  }
+
+  setLocalRoomId(roomId: string) {
+    if (this.localRoomId === roomId) {
+      return this
+    }
+
+    this.localRoomId = roomId
+
+    if (this.currentScope === 'local') {
+      if (this.shouldStayConnected) {
+        this.joinRoom()
+      } else {
+        this.clearConnectTimeout()
+        this.leaveActiveRoom()
+      }
+    }
+
     return this
   }
 
@@ -285,9 +304,8 @@ class ChatRoom extends EventHub {
   }
 }
 
-const normalizedHost = document.location.hostname.replace(/^www\./i, '')
-const localRoomId = stringToHex(normalizedHost)
-const globalRoomId = stringToHex(GLOBAL_CHAT_ROOM_ID)
+const localRoomId = toTransportRoomId(getCurrentDomainRoomId())
+const globalRoomId = toTransportRoomId(GLOBAL_LOBBY_ROOM_ID)
 
 const chatRoom = new ChatRoom({ localRoomId, globalRoomId, peer: Peer.createInstance() })
 

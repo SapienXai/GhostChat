@@ -185,6 +185,7 @@ export const BREAKPOINTS = {
 } as const
 
 export const MESSAGE_MAX_LENGTH = 500 as const
+export const ENABLE_GHOST_TOWN_CTA = true as const
 
 export const STORAGE_NAME = `GHOST_CHAT_${version}` as const
 

@@ -12,6 +12,7 @@ import StatusModule from '@/domain/modules/Status'
 import { SYNC_HISTORY_MAX_DAYS, WEB_RTC_MAX_MESSAGE_SIZE } from '@/constants/config'
 import * as v from 'valibot'
 import getSiteInfo from '@/utils/getSiteInfo'
+import { getCurrentDomainRoomId, parseRoomId, toTransportRoomId } from '@/utils/roomRouting'
 
 export { MessageType }
 
@@ -119,6 +120,7 @@ const NormalMessageSchema = {
   id: v.string(),
   peerId: v.optional(v.string()),
   type: v.literal(MessageType.Normal),
+  localRoomId: v.optional(v.string()),
   body: v.string(),
   sendTime: v.number(),
   receiveTime: v.number(),
@@ -227,6 +229,18 @@ const ChatRoomDomain = Remesh.domain({
       }
     })
 
+    const ActiveLocalRoomIdState = domain.state<string>({
+      name: 'Room.ActiveLocalRoomIdState',
+      default: getCurrentDomainRoomId()
+    })
+
+    const ActiveLocalRoomIdQuery = domain.query({
+      name: 'Room.ActiveLocalRoomIdQuery',
+      impl: ({ get }) => {
+        return get(ActiveLocalRoomIdState())
+      }
+    })
+
     const ReplyTargetState = domain.state<MessageReply | null>({
       name: 'Room.ReplyTargetState',
       default: null
@@ -312,21 +326,31 @@ const ChatRoomDomain = Remesh.domain({
     const LastMessageTimeQuery = domain.query({
       name: 'Room.LastMessageTimeQuery',
       impl: ({ get }) => {
+        const activeLocalRoomId = get(ActiveLocalRoomIdQuery())
         return (
           get(messageListDomain.query.ListQuery())
-            .filter((message) => message.type === MessageType.Normal)
+            .filter(
+              (message) =>
+                message.type === MessageType.Normal &&
+                (typeof message.localRoomId === 'string'
+                  ? message.localRoomId === activeLocalRoomId
+                  : activeLocalRoomId === getCurrentDomainRoomId())
+            )
             .toSorted((a, b) => b.sendTime - a.sendTime)[0]?.sendTime ?? new Date(1970, 1, 1).getTime()
         )
       }
     })
 
-    const canCreatePromptMessage = (get: any, userId: string, body: string) => {
+    const canCreatePromptMessage = (get: any, userId: string, body: string, localRoomId: string) => {
       const now = Date.now()
       const recentDuplicate = get(messageListDomain.query.ListQuery()).some((message: any) => {
         return (
           message.type === MessageType.Prompt &&
           message.userId === userId &&
           message.body === body &&
+          (typeof message.localRoomId === 'string'
+            ? message.localRoomId === localRoomId
+            : localRoomId === getCurrentDomainRoomId()) &&
           now - message.sendTime < PROMPT_DEDUP_WINDOW_MS
         )
       })
@@ -351,6 +375,7 @@ const ChatRoomDomain = Remesh.domain({
         const username = userInfo?.name ?? 'Unknown'
         const userAvatar = userInfo?.avatar ?? ''
         const promptBody = `"${username}" joined the chat`
+        const localRoomId = get(ActiveLocalRoomIdQuery())
         return [
           RoomScopeState().new('local'),
           ReplyTargetState().new(null),
@@ -358,7 +383,7 @@ const ChatRoomDomain = Remesh.domain({
             type: 'create',
             user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
           }),
-          canCreatePromptMessage(get, userId, promptBody)
+          canCreatePromptMessage(get, userId, promptBody, localRoomId)
             ? messageListDomain.command.CreateItemCommand({
                 id: nanoid(),
                 userId,
@@ -367,7 +392,8 @@ const ChatRoomDomain = Remesh.domain({
                 body: promptBody,
                 type: MessageType.Prompt,
                 sendTime: Date.now(),
-                receiveTime: Date.now()
+                receiveTime: Date.now(),
+                localRoomId
               })
             : null,
           SetConnectionStateCommand('connecting'),
@@ -390,10 +416,11 @@ const ChatRoomDomain = Remesh.domain({
         const username = userInfo?.name ?? 'Unknown'
         const userAvatar = userInfo?.avatar ?? ''
         const promptBody = `"${username}" left the chat`
+        const localRoomId = get(ActiveLocalRoomIdQuery())
         return [
           RoomScopeState().new('local'),
           ReplyTargetState().new(null),
-          canCreatePromptMessage(get, userId, promptBody)
+          canCreatePromptMessage(get, userId, promptBody, localRoomId)
             ? messageListDomain.command.CreateItemCommand({
                 id: nanoid(),
                 userId,
@@ -402,7 +429,8 @@ const ChatRoomDomain = Remesh.domain({
                 body: promptBody,
                 type: MessageType.Prompt,
                 sendTime: Date.now(),
-                receiveTime: Date.now()
+                receiveTime: Date.now(),
+                localRoomId
               })
             : null,
           UpdateUserListCommand({
@@ -441,6 +469,45 @@ const ChatRoomDomain = Remesh.domain({
       }
     })
 
+    const RouteToRoomCommand = domain.command({
+      name: 'Room.RouteToRoomCommand',
+      impl: ({ get }, roomId: string) => {
+        const parsedRoomId = parseRoomId(roomId)
+        if (!parsedRoomId) {
+          return null
+        }
+
+        if (parsedRoomId.type === 'global') {
+          if (get(RoomScopeQuery()) === 'global') {
+            return null
+          }
+          return [ApplyRoomScopeCommand('global'), ReplyTargetState().new(null)]
+        }
+
+        const currentLocalRoomId = get(ActiveLocalRoomIdQuery())
+        const shouldReconnect = currentLocalRoomId !== parsedRoomId.roomId
+
+        return [
+          ActiveLocalRoomIdState().new(parsedRoomId.roomId),
+          ApplyRoomScopeCommand('local'),
+          ReplyTargetState().new(null),
+          shouldReconnect ? SetConnectionStateCommand('connecting') : null,
+          shouldReconnect ? JoinStatusModule.command.SetInitialCommand() : null,
+          shouldReconnect ? UserListState().new([]) : null,
+          shouldReconnect ? TypingUsersState().new(new Set()) : null,
+          shouldReconnect ? AwayUsersState().new(new Set()) : null
+        ]
+      }
+    })
+
+    RouteToRoomCommand.after((_, roomId) => {
+      const parsedRoomId = parseRoomId(roomId)
+      if (parsedRoomId?.type === 'domain') {
+        chatRoomExtern.setLocalRoomId(toTransportRoomId(parsedRoomId.roomId))
+      }
+      return null
+    })
+
     const SetReplyTargetCommand = domain.command({
       name: 'Room.SetReplyTargetCommand',
       impl: (_, reply: MessageReply) => {
@@ -459,6 +526,7 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.SendTextMessageCommand',
       impl: ({ get }, message: string | { body: string; atUsers: AtUser[]; reply?: MessageReply }) => {
         const self = get(SelfUserQuery())
+        const localRoomId = get(ActiveLocalRoomIdQuery())
         const siteInfo = getSiteInfo()
         const fromInfo: MessageFromInfo = {
           href: siteInfo.href,
@@ -483,6 +551,7 @@ const ChatRoomDomain = Remesh.domain({
           ...textMessage,
           type: MessageType.Normal,
           roomScope: 'local',
+          localRoomId,
           receiveTime: Date.now(),
           likeUsers: [],
           hateUsers: [],
@@ -621,10 +690,14 @@ const ChatRoomDomain = Remesh.domain({
       name: 'Room.SendSyncHistoryMessageCommand',
       impl: ({ get }, { peerId, lastMessageTime }: { peerId: string; lastMessageTime: number }) => {
         const self = get(SelfUserQuery())
+        const activeLocalRoomId = get(ActiveLocalRoomIdQuery())
 
         const historyMessages = get(messageListDomain.query.ListQuery()).filter((message) => {
           return (
             message.type === MessageType.Normal &&
+            (typeof message.localRoomId === 'string'
+              ? message.localRoomId === activeLocalRoomId
+              : activeLocalRoomId === getCurrentDomainRoomId()) &&
             message.sendTime > lastMessageTime &&
             message.sendTime >= Date.now() - SYNC_HISTORY_MAX_DAYS * 24 * 60 * 60 * 1000
           )
@@ -846,6 +919,7 @@ const ChatRoomDomain = Remesh.domain({
               switch (message.type) {
                 case SendType.SyncUser: {
                   const selfUser = get(SelfUserQuery())
+                  const localRoomId = get(ActiveLocalRoomIdQuery())
 
                   // If a new user joins after the current user has entered the room, a join log message needs to be created.
                   const existUser = get(UserListQuery()).find((user) => user.userId === message.userId)
@@ -857,13 +931,14 @@ const ChatRoomDomain = Remesh.domain({
 
                   return of(
                     UpdateUserListCommand({ type: 'create', user: message }),
-                    isNewJoinUser && canCreatePromptMessage(get, message.userId, promptBody)
+                    isNewJoinUser && canCreatePromptMessage(get, message.userId, promptBody, localRoomId)
                       ? messageListDomain.command.CreateItemCommand({
                           ...message,
                           id: nanoid(),
                           body: promptBody,
                           type: MessageType.Prompt,
-                          receiveTime: Date.now()
+                          receiveTime: Date.now(),
+                          localRoomId
                         })
                       : null,
                     needSyncHistory
@@ -876,7 +951,14 @@ const ChatRoomDomain = Remesh.domain({
                 }
 
                 case SendType.SyncHistory: {
-                  return of(...message.messages.map((message) => messageListDomain.command.UpsertItemCommand(message)))
+                  return of(
+                    ...message.messages.map((historyMessage) =>
+                      messageListDomain.command.UpsertItemCommand({
+                        ...historyMessage,
+                        localRoomId: historyMessage.localRoomId ?? get(ActiveLocalRoomIdQuery())
+                      })
+                    )
+                  )
                 }
 
                 case SendType.Text:
@@ -885,6 +967,7 @@ const ChatRoomDomain = Remesh.domain({
                       ...message,
                       type: MessageType.Normal,
                       roomScope: 'local',
+                      localRoomId: get(ActiveLocalRoomIdQuery()),
                       receiveTime: Date.now(),
                       likeUsers: [],
                       hateUsers: [],
@@ -963,16 +1046,18 @@ const ChatRoomDomain = Remesh.domain({
 
             if (existUser) {
               const promptBody = `"${existUser.username}" left the chat`
+              const localRoomId = get(ActiveLocalRoomIdQuery())
               return [
                 UpdateUserListCommand({ type: 'delete', user: { ...existUser, peerId } }),
-                existUser.peerIds.length === 1 && canCreatePromptMessage(get, existUser.userId, promptBody)
+                existUser.peerIds.length === 1 && canCreatePromptMessage(get, existUser.userId, promptBody, localRoomId)
                   ? messageListDomain.command.CreateItemCommand({
                       ...existUser,
                       id: nanoid(),
                       body: promptBody,
                       type: MessageType.Prompt,
                       sendTime: Date.now(),
-                      receiveTime: Date.now()
+                      receiveTime: Date.now(),
+                      localRoomId
                     })
                   : null,
                 OnLeaveRoomEvent(peerId)
@@ -1015,6 +1100,7 @@ const ChatRoomDomain = Remesh.domain({
         UserListQuery,
         ConnectionStateQuery,
         JoinIsFinishedQuery,
+        ActiveLocalRoomIdQuery,
         RoomScopeQuery,
         ReplyTargetQuery,
         TypingUsersQuery,
@@ -1024,6 +1110,7 @@ const ChatRoomDomain = Remesh.domain({
         JoinRoomCommand,
         LeaveRoomCommand,
         SwitchRoomScopeCommand,
+        RouteToRoomCommand,
         SetReplyTargetCommand,
         ClearReplyTargetCommand,
         SendTextMessageCommand,

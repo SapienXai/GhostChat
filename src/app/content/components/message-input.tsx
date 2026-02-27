@@ -47,6 +47,7 @@ const MessageInput = ({
       <ScrollArea className="box-border max-h-40 w-full bg-white/80 backdrop-blur-md transition-[color,box-shadow] 2xl:max-h-52 dark:bg-slate-900/72">
         <Textarea
           ref={ref}
+          data-ghostchat-message-input="true"
           onPaste={onPaste}
           onKeyDown={onKeyDown}
           autoFocus={autoFocus}

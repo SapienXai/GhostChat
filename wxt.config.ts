@@ -16,6 +16,7 @@ export default defineConfig({
     const common = {
       name: displayName,
       permissions: ['storage', 'notifications', 'tabs'],
+      host_permissions: ['https://sapienx.app/*'],
       homepage_url: homepage,
       web_accessible_resources: [
         {

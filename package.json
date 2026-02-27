@@ -1,7 +1,7 @@
 {
   "name": "ghost-chat",
   "displayName": "GhostChat",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "GhostChat - Decentralized Web3 chat extension for secure on-site conversations and DeFi safety checks.",
   "type": "module",
   "scripts": {

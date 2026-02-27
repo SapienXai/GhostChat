@@ -1,4 +1,4 @@
-import { type FC, useCallback, useEffect, useMemo } from 'react'
+import { type FC, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useRemeshDomain, useRemeshQuery, useRemeshSend } from 'remesh-react'
 import { Button } from '@/components/ui/button'
 
@@ -10,7 +10,6 @@ import UserInfoDomain from '@/domain/UserInfo'
 import ChatRoomDomain from '@/domain/ChatRoom'
 import MessageListDomain, { type NormalMessage, MessageType } from '@/domain/MessageList'
 import VirtualRoomDomain from '@/domain/VirtualRoom'
-import MessageInputDomain from '@/domain/MessageInput'
 import Leaderboard from './leaderboard'
 import LeaderboardFooter from './leaderboard-footer'
 import GhostTownCtaPanel from './ghost-town-cta-panel'
@@ -23,6 +22,7 @@ import type { RoomScope } from '@/domain/externs/ChatRoom'
 import { ENABLE_GHOST_TOWN_CTA } from '@/constants/config'
 import { GLOBAL_LOBBY_ROOM_ID, createDomainRoomId, normalizeRoomHostname } from '@/utils/roomRouting'
 import seedDomains from '@/data/seedDomains.json'
+import { nanoid } from 'nanoid'
 
 export type MainTab = 'chat' | 'trending' | 'new-rising'
 
@@ -33,13 +33,24 @@ export interface MainProps {
 }
 
 const seedDomainList = seedDomains as SeedDomain[]
+const CONVERSATION_STARTERS = [
+  'GM! What are we watching on this project today?',
+  'Hot take: this is underrated. Change my mind.',
+  'What is the one metric you check first here?',
+  'Anyone seeing unusual volume or just me?',
+  'If you had one move today, what would it be?',
+  'What is the biggest risk on this project right now?',
+  'Bull case in one sentence?',
+  'Bear case in one sentence?',
+  'What changed here in the last 24h?',
+  'One alpha, one warning. Go.'
+] as const
 
 const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true }) => {
   const send = useRemeshSend()
   const messageListDomain = useRemeshDomain(MessageListDomain())
   const chatRoomDomain = useRemeshDomain(ChatRoomDomain())
   const virtualRoomDomain = useRemeshDomain(VirtualRoomDomain())
-  const messageInputDomain = useRemeshDomain(MessageInputDomain())
   const userInfoDomain = useRemeshDomain(UserInfoDomain())
   const userInfo = useRemeshQuery(userInfoDomain.query.UserInfoQuery())
   const chatUserList = useRemeshQuery(chatRoomDomain.query.UserListQuery())
@@ -49,7 +60,6 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
   const siteInfo = getSiteInfo()
   const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
   const activeLocalRoomId = useRemeshQuery(chatRoomDomain.query.ActiveLocalRoomIdQuery())
-  const draftMessage = useRemeshQuery(messageInputDomain.query.MessageQuery())
   const currentDomainRoomId = createDomainRoomId(siteInfo.hostname)
   const _messageList = useRemeshQuery(messageListDomain.query.ListQuery())
   const localMessageList = _messageList
@@ -186,10 +196,17 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
     if (!target) return
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
+  const scrollChatToBottom = useCallback(() => {
+    const root = getRootNode()
+    const scrollContainer = root.querySelector<HTMLDivElement>('[data-ghostchat-message-list-scroll="true"]')
+    if (!scrollContainer) return
+    scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' })
+  }, [])
   const isGlobalScope = roomScope === 'global'
   const humansCount = isGlobalScope ? virtualUserList.length : chatUserList.length
   const messageCount = messageList.length
   const isEmptyRoom = messageCount === 0 || humansCount <= 1
+  const lastStarterIndexRef = useRef(-1)
 
   const suggestedRooms = useMemo(
     () =>
@@ -222,22 +239,54 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
   )
 
   const handleStartFirstMessage = useCallback(() => {
-    if (messageCount === 0 && !draftMessage.trim()) {
-      send(messageInputDomain.command.InputCommand('Hey everyone, kicking this room off.'))
+    const total = CONVERSATION_STARTERS.length
+    if (total <= 0) return
+
+    let nextIndex = Math.floor(Math.random() * total)
+    if (total > 1 && nextIndex === lastStarterIndexRef.current) {
+      nextIndex = (nextIndex + 1) % total
     }
+    lastStarterIndexRef.current = nextIndex
+    const starter = CONVERSATION_STARTERS[nextIndex]
+
+    if (isGlobalScope) {
+      send(
+        virtualRoomDomain.command.SendGlobalTextMessageCommand({
+          id: nanoid(),
+          sendTime: Date.now(),
+          body: starter,
+          atUsers: []
+        })
+      )
+    } else {
+      send(chatRoomDomain.command.SendTextMessageCommand(starter))
+    }
+
+    scrollChatToBottom()
+    window.requestAnimationFrame(() => {
+      scrollChatToBottom()
+    })
 
     const root = getRootNode()
     const input = root.querySelector<HTMLTextAreaElement>('[data-ghostchat-message-input="true"]')
     if (!input) return
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' })
     input.focus()
-    const cursor = input.value.length
+    const cursor = input.value?.length ?? 0
     input.setSelectionRange(cursor, cursor)
-  }, [draftMessage, messageCount, messageInputDomain, send])
+  }, [chatRoomDomain, isGlobalScope, scrollChatToBottom, send, virtualRoomDomain])
 
   const handleJoinGlobalLobby = useCallback(() => {
     send(chatRoomDomain.command.RouteToRoomCommand(GLOBAL_LOBBY_ROOM_ID))
     onTabChange('chat')
-  }, [chatRoomDomain, onTabChange, send])
+    scrollChatToBottom()
+    window.requestAnimationFrame(() => {
+      scrollChatToBottom()
+    })
+    window.setTimeout(() => {
+      scrollChatToBottom()
+    }, 120)
+  }, [chatRoomDomain, onTabChange, scrollChatToBottom, send])
 
   const handleJoinSuggestedRoom = useCallback((hostname: string) => {
     const normalizedHostname = normalizeRoomHostname(hostname)

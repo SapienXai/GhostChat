@@ -34,11 +34,10 @@ const ToastDomain = Remesh.domain({
             const silentErrorPatterns = [
               'no peer connected',
               'room not joined',
-              'cannot send message',
               'connection is not established yet',
-              'chat connection timeout',
-              'signaling-connect-error',
-              'signaling-open-timeout'
+              'chat room closed unexpectedly',
+              'virtual room closed unexpectedly',
+              'reconnecting after room-close'
             ]
             return !silentErrorPatterns.some((pattern) => message.includes(pattern))
           }),

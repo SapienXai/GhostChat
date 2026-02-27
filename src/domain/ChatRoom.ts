@@ -1,5 +1,5 @@
 import { Remesh } from 'remesh'
-import { map, merge, of, EMPTY, mergeMap, fromEventPattern } from 'rxjs'
+import { map, merge, of, EMPTY, mergeMap, fromEventPattern, interval, startWith } from 'rxjs'
 import type { AtUser, MessageFromInfo, MessageReply, NormalMessage } from './MessageList'
 import { type MessageUser } from './MessageList'
 import { ChatRoomExtern } from '@/domain/externs/ChatRoom'
@@ -89,6 +89,7 @@ export type RoomMessage =
 
 export type RoomUser = MessageUser & { peerIds: string[]; joinTime: number }
 export type ChatConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error'
+const SYNC_USER_BROADCAST_INTERVAL_MS = 20_000
 
 const MessageUserSchema = {
   userId: v.string(),
@@ -345,9 +346,14 @@ const ChatRoomDomain = Remesh.domain({
     const JoinRoomCommand = domain.command({
       name: 'Room.JoinRoomCommand',
       impl: ({ get }) => {
-        const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
+        const userInfo = get(userInfoDomain.query.UserInfoQuery())
+        const userId = userInfo?.id ?? 'unknown'
+        const username = userInfo?.name ?? 'Unknown'
+        const userAvatar = userInfo?.avatar ?? ''
         const promptBody = `"${username}" joined the chat`
         return [
+          RoomScopeState().new('local'),
+          ReplyTargetState().new(null),
           UpdateUserListCommand({
             type: 'create',
             user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
@@ -379,9 +385,14 @@ const ChatRoomDomain = Remesh.domain({
     const LeaveRoomCommand = domain.command({
       name: 'Room.LeaveRoomCommand',
       impl: ({ get }) => {
-        const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
+        const userInfo = get(userInfoDomain.query.UserInfoQuery())
+        const userId = userInfo?.id ?? 'unknown'
+        const username = userInfo?.name ?? 'Unknown'
+        const userAvatar = userInfo?.avatar ?? ''
         const promptBody = `"${username}" left the chat`
         return [
+          RoomScopeState().new('local'),
+          ReplyTargetState().new(null),
           canCreatePromptMessage(get, userId, promptBody)
             ? messageListDomain.command.CreateItemCommand({
                 id: nanoid(),
@@ -569,7 +580,7 @@ const ChatRoomDomain = Remesh.domain({
 
     const SendSyncUserMessageCommand = domain.command({
       name: 'Room.SendSyncUserMessageCommand',
-      impl: ({ get }, peerId: string) => {
+      impl: ({ get }, peerId?: string) => {
         const self = get(SelfUserQuery())
         const lastMessageTime = get(LastMessageTimeQuery())
 
@@ -795,6 +806,25 @@ const ChatRoomDomain = Remesh.domain({
           })
         )
         return onJoinRoom$
+      }
+    })
+
+    domain.effect({
+      name: 'Room.BroadcastSyncUserEffect',
+      impl: ({ get, fromEvent }) => {
+        const trigger$ = merge(
+          interval(SYNC_USER_BROADCAST_INTERVAL_MS).pipe(startWith(0)),
+          fromEvent(SelfJoinRoomEvent).pipe(map(() => Date.now()))
+        )
+
+        return trigger$.pipe(
+          map(() => {
+            if (get(JoinStatusModule.query.IsInitialQuery())) {
+              return null
+            }
+            return SendSyncUserMessageCommand()
+          })
+        )
       }
     })
 

@@ -1,38 +1,29 @@
 import { EventEmitter } from 'eventemitter3'
 import { io, type Socket } from 'socket.io-client'
+import type {
+  InSignalMessage,
+  OutSignalMessage,
+  Signal,
+  Signaling,
+  SignalingEvents,
+  SignalingState
+} from '@rtco/client'
 
-type SignalingState = 'disconnected' | 'connecting' | 'connected' | 'ready'
-
-interface SignalMessage {
-  target: string
-  session: string
-  metadata?: string
-  signal: unknown
-}
-
-interface InboundSignal {
-  type: 'candidate' | 'sdp'
-  data: unknown
-}
-
-interface InboundSignalMessage extends Omit<SignalMessage, 'signal'> {
-  source: string
-  signal: InboundSignal
-}
+type InboundSignalMessage = InSignalMessage
 
 interface SocketSignalingConfig {
   id: string
   url?: string
 }
 
-export default class SocketSignaling extends EventEmitter {
+export default class SocketSignaling extends EventEmitter<SignalingEvents> implements Signaling {
   private stateValue: SignalingState = 'disconnected'
   private readonly idValue: string
   private readonly socket: Socket
   private readonly candidateFlushDelayMs = 800
   private readonly staleCandidateTtlMs = 15000
   private readonly activeJoins = new Map<string, string | undefined>()
-  private readonly pendingSignals: SignalMessage[] = []
+  private readonly pendingSignals: OutSignalMessage[] = []
   private readonly pendingCandidates = new Map<string, InboundSignalMessage[]>()
   private readonly sessionSdpSeenAt = new Map<string, number>()
   private readonly candidateFlushTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -81,7 +72,7 @@ export default class SocketSignaling extends EventEmitter {
     this.stateValue = 'disconnected'
   }
 
-  signal(message: SignalMessage) {
+  signal(message: OutSignalMessage) {
     if (this.stateValue !== 'ready') {
       this.pendingSignals.push(message)
       return
@@ -107,7 +98,7 @@ export default class SocketSignaling extends EventEmitter {
     this.socket.on('connect', this.handleConnect)
     this.socket.on('disconnect', this.handleDisconnect)
     this.socket.on('connect_error', this.handleConnectError)
-    this.socket.on('open', this.handleOpen)
+    this.socket.on('open', this.handleOpen as (...args: any[]) => void)
     this.socket.on('error', this.handleError)
     this.socket.on('signal', this.handleSignal)
     this.socket.on('join', this.handleJoin)
@@ -119,7 +110,7 @@ export default class SocketSignaling extends EventEmitter {
     this.socket.off('connect', this.handleConnect)
     this.socket.off('disconnect', this.handleDisconnect)
     this.socket.off('connect_error', this.handleConnectError)
-    this.socket.off('open', this.handleOpen)
+    this.socket.off('open', this.handleOpen as (...args: any[]) => void)
     this.socket.off('error', this.handleError)
     this.socket.off('signal', this.handleSignal)
     this.socket.off('join', this.handleJoin)
@@ -127,16 +118,19 @@ export default class SocketSignaling extends EventEmitter {
   }
 
   private handleConnect = () => {
+    console.info('[GhostChat signaling] socket connected, waiting for open handshake')
     this.stateValue = 'connected'
     this.clearOpenHandshakeTimer()
     this.openHandshakeTimer = setTimeout(() => {
       if (this.stateValue === 'connected') {
+        console.error('[GhostChat signaling] open handshake timeout')
         this.emit('error', new Error('signaling-open-timeout: connected but not ready'))
       }
     }, 7000)
   }
 
   private handleDisconnect = () => {
+    console.warn('[GhostChat signaling] socket disconnected')
     this.clearOpenHandshakeTimer()
     this.clearSignalOrderingState()
     this.stateValue = 'disconnected'
@@ -144,21 +138,24 @@ export default class SocketSignaling extends EventEmitter {
   }
 
   private handleConnectError = (error: Error) => {
+    console.error('[GhostChat signaling] connect_error', error.message)
     this.emit('error', new Error(`signaling-connect-error: ${error.message}`))
   }
 
   private handleOpen = (id: string) => {
+    console.info('[GhostChat signaling] ready', id)
     this.markReady(id)
   }
 
   private handleError = (error: string) => {
+    console.error('[GhostChat signaling] server error', error)
     this.emit('error', new Error(`signaling-error: ${error}`))
   }
 
   private handleSignal = (message: unknown) => {
     const parsed = this.tryParseInboundSignal(message)
     if (!parsed) {
-      this.emit('signal', message)
+      this.emit('signal', message as InSignalMessage)
       return
     }
 
@@ -291,28 +288,26 @@ export default class SocketSignaling extends EventEmitter {
     if (!message || typeof message !== 'object') return null
 
     const maybeMessage = message as Partial<InboundSignalMessage>
-    if (
-      typeof maybeMessage.session !== 'string' ||
-      typeof maybeMessage.target !== 'string' ||
-      typeof maybeMessage.source !== 'string'
-    ) {
+    if (typeof maybeMessage.session !== 'string' || typeof maybeMessage.source !== 'string') {
       return null
     }
 
-    const maybeSignal = maybeMessage.signal as Partial<InboundSignal> | undefined
+    const maybeSignal = maybeMessage.signal as Partial<Signal> | undefined
     if (!maybeSignal || (maybeSignal.type !== 'candidate' && maybeSignal.type !== 'sdp')) {
       return null
     }
 
+    const signal: Signal =
+      maybeSignal.type === 'candidate'
+        ? { type: 'candidate', data: maybeSignal.data as RTCIceCandidate }
+        : { type: 'sdp', data: maybeSignal.data as RTCSessionDescription }
+
     return {
-      target: maybeMessage.target,
+      target: typeof maybeMessage.target === 'string' ? maybeMessage.target : this.idValue,
       source: maybeMessage.source,
       session: maybeMessage.session,
-      metadata: maybeMessage.metadata,
-      signal: {
-        type: maybeSignal.type,
-        data: maybeSignal.data
-      }
+      metadata: typeof maybeMessage.metadata === 'string' ? maybeMessage.metadata : undefined,
+      signal
     }
   }
 }

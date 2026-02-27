@@ -12,7 +12,7 @@ import MessageListDomain, { type NormalMessage, MessageType } from '@/domain/Mes
 import VirtualRoomDomain from '@/domain/VirtualRoom'
 import Leaderboard from './leaderboard'
 import LeaderboardFooter from './leaderboard-footer'
-import { cn } from '@/utils'
+import { cn, getSiteInfo } from '@/utils'
 import { getRootNode } from '@/utils'
 import type { RoomScope } from '@/domain/externs/ChatRoom'
 
@@ -34,6 +34,7 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
   const virtualUserList = useRemeshQuery(virtualRoomDomain.query.UserListQuery())
   const globalTextMessageList = useRemeshQuery(virtualRoomDomain.query.GlobalTextMessageListQuery())
   const siteStats = useRemeshQuery(virtualRoomDomain.query.SiteStatsQuery())
+  const siteInfo = getSiteInfo()
   const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
   const _messageList = useRemeshQuery(messageListDomain.query.ListQuery())
   const localMessageList = _messageList
@@ -104,7 +105,26 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
       hate: false
     }))
     .toSorted((a, b) => a.sendTime - b.sendTime)
-  const messageList = roomScope === 'global' ? globalMessageList : localMessageList
+  const localScopedGlobalMessageList = globalMessageList.filter((message) => {
+    const origin = message.fromInfo?.origin
+    const hostname = message.fromInfo?.hostname
+    if (typeof origin === 'string' && origin.length) {
+      return origin === siteInfo.origin
+    }
+    return typeof hostname === 'string' && hostname.length ? hostname === siteInfo.hostname : false
+  })
+  const localCombinedMessageList = (() => {
+    const merged = new Map<string, (typeof localMessageList)[number]>()
+    for (const message of localScopedGlobalMessageList) {
+      merged.set(message.id, message)
+    }
+    for (const message of localMessageList) {
+      merged.set(message.id, message)
+    }
+    return [...merged.values()].toSorted((a, b) => a.sendTime - b.sendTime)
+  })()
+
+  const messageList = roomScope === 'global' ? globalMessageList : localCombinedMessageList
 
   const handleLikeChange = (messageId: string) => {
     send(chatRoomDomain.command.SendLikeMessageCommand(messageId))
@@ -216,9 +236,17 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
                   like={message.like}
                   hate={message.hate}
                   isOwnMessage={message.userId === userInfo?.id}
-                  showSourceInfo={roomScope === 'global'}
-                  onLikeChange={roomScope === 'local' ? () => handleLikeChange(message.id) : undefined}
-                  onHateChange={roomScope === 'local' ? () => handleHateChange(message.id) : undefined}
+                  showSourceInfo={roomScope === 'global' || message.roomScope === 'global'}
+                  onLikeChange={
+                    roomScope === 'local' && message.roomScope !== 'global'
+                      ? () => handleLikeChange(message.id)
+                      : undefined
+                  }
+                  onHateChange={
+                    roomScope === 'local' && message.roomScope !== 'global'
+                      ? () => handleHateChange(message.id)
+                      : undefined
+                  }
                   onReply={() => handleReplyTarget(message)}
                   onReplyNavigate={handleReplyNavigate}
                   className="duration-300 animate-in fade-in-0"

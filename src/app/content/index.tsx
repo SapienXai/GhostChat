@@ -18,6 +18,7 @@ import '@/assets/styles/tailwind.css'
 import '@/assets/styles/overlay.css'
 import NotificationDomain from '@/domain/Notification'
 import { createElement } from '@/utils'
+import ErrorBoundary from '@/components/error-boundary'
 
 export default defineContentScript({
   cssInjectionMode: 'ui',
@@ -51,13 +52,13 @@ export default defineContentScript({
         container.append(app)
         const root = createRoot(app)
         root.render(
-          <React.StrictMode>
-            <RemeshRoot store={store}>
-              <RemeshScope domains={[NotificationDomain()]}>
+          <RemeshRoot store={store}>
+            <RemeshScope domains={[NotificationDomain()]}>
+              <ErrorBoundary fallback={null}>
                 <App />
-              </RemeshScope>
-            </RemeshRoot>
-          </React.StrictMode>
+              </ErrorBoundary>
+            </RemeshScope>
+          </RemeshRoot>
         )
         return root
       },

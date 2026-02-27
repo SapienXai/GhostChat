@@ -18,7 +18,7 @@ import StorageEffect from '@/domain/modules/StorageEffect'
 import * as v from 'valibot'
 import type { SiteInfo } from '@/utils/getSiteInfo'
 import getSiteInfo from '@/utils/getSiteInfo'
-import ChatRoomDomain, { type TextMessage } from '@/domain/ChatRoom'
+import ChatRoomDomain from '@/domain/ChatRoom'
 import { GLOBAL_MESSAGE_LIST_STORAGE_KEY, WEB_RTC_MAX_MESSAGE_SIZE } from '@/constants/config'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -76,6 +76,15 @@ export interface GlobalTextMessage extends MessageUser {
   reply?: MessageReply
   fromInfo: MessageFromInfo
   originRoomId?: string
+}
+
+export interface GlobalTextInput {
+  id: string
+  sendTime: number
+  body: string
+  atUsers: AtUser[]
+  reply?: MessageReply
+  fromInfo?: MessageFromInfo
 }
 
 export interface SyncGlobalHistoryMessage extends MessageUser {
@@ -380,7 +389,20 @@ const VirtualRoomDomain = Remesh.domain({
     const SelfUserQuery = domain.query({
       name: 'Room.SelfUserQuery',
       impl: ({ get }) => {
-        return get(UserListQuery()).find((user) => user.peerIds.includes(virtualRoomExtern.peerId))!
+        const selfUser = get(UserListQuery()).find((user) => user.peerIds.includes(virtualRoomExtern.peerId))
+        if (selfUser) {
+          return selfUser
+        }
+
+        const userInfo = get(userInfoDomain.query.UserInfoQuery())
+        return {
+          userId: userInfo?.id ?? 'unknown',
+          username: userInfo?.name ?? 'Unknown',
+          userAvatar: userInfo?.avatar ?? '',
+          joinTime: Date.now(),
+          peerIds: [virtualRoomExtern.peerId],
+          fromInfos: [{ ...getSiteInfo(), peerId: virtualRoomExtern.peerId }]
+        }
       }
     })
 
@@ -389,7 +411,10 @@ const VirtualRoomDomain = Remesh.domain({
     const JoinRoomCommand = domain.command({
       name: 'Room.JoinRoomCommand',
       impl: ({ get }) => {
-        const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
+        const userInfo = get(userInfoDomain.query.UserInfoQuery())
+        const userId = userInfo?.id ?? 'unknown'
+        const username = userInfo?.name ?? 'Unknown'
+        const userAvatar = userInfo?.avatar ?? ''
         return [
           UpdateUserListCommand({
             type: 'create',
@@ -418,7 +443,10 @@ const VirtualRoomDomain = Remesh.domain({
     const LeaveRoomCommand = domain.command({
       name: 'Room.LeaveRoomCommand',
       impl: ({ get }) => {
-        const { id: userId, name: username, avatar: userAvatar } = get(userInfoDomain.query.UserInfoQuery())!
+        const userInfo = get(userInfoDomain.query.UserInfoQuery())
+        const userId = userInfo?.id ?? 'unknown'
+        const username = userInfo?.name ?? 'Unknown'
+        const userAvatar = userInfo?.avatar ?? ''
         return [
           UpdateUserListCommand({
             type: 'delete',
@@ -646,7 +674,7 @@ const VirtualRoomDomain = Remesh.domain({
 
     const SendGlobalTextMessageCommand = domain.command({
       name: 'Room.SendGlobalTextMessageCommand',
-      impl: ({ get }, message: TextMessage) => {
+      impl: ({ get }, message: GlobalTextInput) => {
         if (get(JoinStatusModule.query.IsInitialQuery())) {
           return null
         }

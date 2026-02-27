@@ -37,14 +37,17 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
   const dragStartRef = useRef<{ x: number; y: number } | null>(null)
   const draggedRef = useRef(false)
   const resolveRuntimeVideoUrl = () => {
-    const browserRuntime = (globalThis as any).browser?.runtime
-    const browserRuntimeUrl = browserRuntime?.getURL?.('ghostchat_transparent.webm')
-    if (browserRuntimeUrl) return browserRuntimeUrl as string
+    try {
+      const browserRuntime = (globalThis as any).browser?.runtime
+      const browserRuntimeUrl = browserRuntime?.getURL?.('ghostchat_transparent.webm')
+      if (browserRuntimeUrl) return browserRuntimeUrl as string
 
-    const chromeRuntime = (globalThis as any).chrome?.runtime
-    const chromeRuntimeUrl = chromeRuntime?.getURL?.('ghostchat_transparent.webm')
-    if (chromeRuntimeUrl) return chromeRuntimeUrl as string
-
+      const chromeRuntime = (globalThis as any).chrome?.runtime
+      const chromeRuntimeUrl = chromeRuntime?.getURL?.('ghostchat_transparent.webm')
+      if (chromeRuntimeUrl) return chromeRuntimeUrl as string
+    } catch {
+      // Extension context may be invalidated during reload/uninstall.
+    }
     return ''
   }
   const [floatingVideoUrl, setFloatingVideoUrl] = useState(resolveRuntimeVideoUrl() || FloatingIconVideoAsset)
@@ -129,7 +132,11 @@ const AppButton: FC<AppButtonProps> = ({ className }) => {
   }
 
   const handleOpenOptionsPage = () => {
-    messenger.sendMessage(EVENT.OPTIONS_PAGE_OPEN, undefined)
+    try {
+      messenger.sendMessage(EVENT.OPTIONS_PAGE_OPEN, undefined)
+    } catch {
+      // Ignore extension context invalidation while page/app is tearing down.
+    }
   }
 
   const handleToggleApp = () => {

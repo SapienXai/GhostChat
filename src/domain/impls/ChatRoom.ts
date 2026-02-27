@@ -22,9 +22,15 @@ class ChatRoom extends EventHub {
   private currentScope: RoomScope = 'local'
   readonly peerId: string
   private room?: Room
+  private readonly intentionalCloseRooms = new WeakSet<Room>()
   private connectTimeout?: ReturnType<typeof setTimeout>
+  private peerOpenHandler?: () => void
+  private reconnectTimer?: ReturnType<typeof setTimeout>
+  private reconnectAttempts = 0
+  private shouldStayConnected = false
   private readonly maxSendRetries = 6
   private readonly baseRetryDelayMs = 200
+  private readonly maxReconnectDelayMs = 10000
   private static readonly READY_EVENT = 'ready'
   private static readonly MESSAGE_EVENT = 'message'
   private static readonly JOIN_EVENT = 'join-room'
@@ -61,26 +67,26 @@ class ChatRoom extends EventHub {
     }
     this.currentScope = scope
     this.clearConnectTimeout()
-    if (this.room) {
-      this.room.leave()
-      this.room = undefined
-    }
+    this.leaveActiveRoom()
     return this
   }
 
   joinRoom() {
+    this.shouldStayConnected = true
+    this.clearReconnectTimer()
     this.startConnectTimeout()
-    if (this.room) {
-      this.room.leave()
-      this.room = undefined
-    }
+    this.leaveActiveRoom()
 
     if (this.peer.state === 'ready') {
       this.connectRoom()
     } else {
-      this.peer.once('open', () => {
-        this.connectRoom()
-      })
+      if (!this.peerOpenHandler) {
+        this.peerOpenHandler = () => {
+          this.peerOpenHandler = undefined
+          this.connectRoom()
+        }
+        this.peer.once('open', this.peerOpenHandler)
+      }
     }
     return this
   }
@@ -147,11 +153,14 @@ class ChatRoom extends EventHub {
   }
 
   leaveRoom() {
+    this.shouldStayConnected = false
     this.clearConnectTimeout()
-    if (this.room) {
-      this.room.leave()
-      this.room = undefined
+    this.clearReconnectTimer()
+    if (this.peerOpenHandler) {
+      this.peer.off('open', this.peerOpenHandler)
+      this.peerOpenHandler = undefined
     }
+    this.leaveActiveRoom()
     return this
   }
   onError(callback: (error: Error) => void) {
@@ -178,6 +187,9 @@ class ChatRoom extends EventHub {
 
   private handleReady() {
     this.clearConnectTimeout()
+    this.clearReconnectTimer()
+    this.reconnectAttempts = 0
+    console.info('[GhostChat chat-room] ready', { roomId: this.roomId, peerId: this.peerId, scope: this.currentScope })
     this.emit(ChatRoom.READY_EVENT, this.roomId)
   }
 
@@ -199,12 +211,56 @@ class ChatRoom extends EventHub {
     })
     room.on('join', (id) => {
       if (this.room !== room) return
+      console.info('[GhostChat chat-room] peer joined', { roomId: this.roomId, peerId: id })
       this.emit(ChatRoom.JOIN_EVENT, id)
     })
     room.on('leave', (id) => {
       if (this.room !== room) return
+      console.info('[GhostChat chat-room] peer left', { roomId: this.roomId, peerId: id })
       this.emit(ChatRoom.LEAVE_EVENT, id)
     })
+    room.on('close', () => {
+      if (this.intentionalCloseRooms.has(room)) {
+        this.intentionalCloseRooms.delete(room)
+        return
+      }
+      if (this.room !== room) return
+      this.room = undefined
+      console.warn('[GhostChat chat-room] room closed; scheduling reconnect', { roomId: this.roomId })
+      this.emit('error', new Error('Chat room closed unexpectedly'))
+      this.scheduleReconnect('room-close')
+    })
+  }
+
+  private leaveActiveRoom() {
+    const activeRoom = this.room
+    if (!activeRoom) return
+    this.room = undefined
+    this.intentionalCloseRooms.add(activeRoom)
+    activeRoom.leave()
+  }
+
+  private scheduleReconnect(reason: string) {
+    if (!this.shouldStayConnected || this.reconnectTimer || this.room) return
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, this.maxReconnectDelayMs)
+    this.reconnectAttempts += 1
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined
+      if (!this.shouldStayConnected || this.room) return
+      console.info('[GhostChat chat-room] reconnecting', {
+        reason,
+        attempt: this.reconnectAttempts,
+        roomId: this.roomId
+      })
+      this.emit('error', new Error(`Chat reconnecting after ${reason}`))
+      this.joinRoom()
+    }, delay)
+  }
+
+  private clearReconnectTimer() {
+    if (!this.reconnectTimer) return
+    clearTimeout(this.reconnectTimer)
+    this.reconnectTimer = undefined
   }
 
   private toError(error: unknown): Error {

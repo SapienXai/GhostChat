@@ -23,11 +23,13 @@ import { AvatarImage } from '@radix-ui/react-avatar'
 import ToastDomain from '@/domain/Toast'
 import ImageButton from '../../components/image-button'
 import { nanoid } from 'nanoid'
+import VirtualRoomDomain from '@/domain/VirtualRoom'
 
 const Footer: FC = () => {
   const send = useRemeshSend()
   const toastDomain = useRemeshDomain(ToastDomain())
   const chatRoomDomain = useRemeshDomain(ChatRoomDomain())
+  const virtualRoomDomain = useRemeshDomain(VirtualRoomDomain())
   const messageInputDomain = useRemeshDomain(MessageInputDomain())
   const message = useRemeshQuery(messageInputDomain.query.MessageQuery())
   const userInfoDomain = useRemeshDomain(UserInfoDomain())
@@ -208,13 +210,18 @@ const Footer: FC = () => {
       return send(toastDomain.command.WarningCommand('Message size cannot exceed 256KiB.'))
     }
 
-    send(
-      chatRoomDomain.command.SendTextMessageCommand({
-        body: transformedMessage,
-        atUsers,
-        reply: replyTarget ?? undefined
-      })
-    )
+    const payload = {
+      body: transformedMessage,
+      atUsers,
+      reply: replyTarget ?? undefined
+    }
+
+    if (roomScope === 'global') {
+      send(virtualRoomDomain.command.SendGlobalTextMessageCommand({ ...payload, id: nanoid(), sendTime: Date.now() }))
+    } else {
+      send(chatRoomDomain.command.SendTextMessageCommand(payload))
+    }
+
     send(messageInputDomain.command.ClearCommand())
   }
 

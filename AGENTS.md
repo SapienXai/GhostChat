@@ -2,11 +2,12 @@
 
 ## Release Trigger
 - If the user asks for `yeni build al`, `release et`, `sürüm yayınla`, or similar:
-  1. Run `npm run release:build-all`
-  2. Confirm `public/update.json` version/links are correct
-  3. Run `npm run release:publish`
-  4. Run `npm run release:verify`
-  5. Report release URLs and status codes
+  1. Run `npm version patch --no-git-tag-version`
+  2. Run `npm run release:build-all`
+  3. Confirm `public/update.json` version/links are correct
+  4. Run `npm run release:publish`
+  5. Run `npm run release:verify`
+  6. Report release URLs and status codes
 
 ## Update Metadata Contract
 - Keep `public/update.json` in this shape:

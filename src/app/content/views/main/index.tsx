@@ -15,6 +15,8 @@ import Leaderboard from './leaderboard'
 import LeaderboardFooter from './leaderboard-footer'
 import GhostTownCtaPanel from './ghost-town-cta-panel'
 import { selectSuggestedRooms, type SeedDomain } from './suggested-rooms'
+import { buildSuggestedRoomSignals } from './suggested-room-signals'
+import { selectActiveRooms } from './active-rooms'
 import { cn, getSiteInfo } from '@/utils'
 import { getRootNode } from '@/utils'
 import type { RoomScope } from '@/domain/externs/ChatRoom'
@@ -198,6 +200,26 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
       }),
     [siteInfo.hostname]
   )
+  const suggestedRoomsWithSignals = useMemo(
+    () =>
+      buildSuggestedRoomSignals({
+        rooms: suggestedRooms,
+        siteStats,
+        globalMessages: globalTextMessageList
+      }),
+    [globalTextMessageList, siteStats, suggestedRooms]
+  )
+  const activeRooms = useMemo(
+    () =>
+      selectActiveRooms({
+        virtualUsers: virtualUserList,
+        currentHostname: siteInfo.hostname,
+        siteStats,
+        globalMessages: globalTextMessageList,
+        count: 5
+      }),
+    [globalTextMessageList, siteInfo.hostname, siteStats, virtualUserList]
+  )
 
   const handleStartFirstMessage = useCallback(() => {
     if (messageCount === 0 && !draftMessage.trim()) {
@@ -292,7 +314,8 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
         <MessageList>
           {ENABLE_GHOST_TOWN_CTA && isEmptyRoom && (
             <GhostTownCtaPanel
-              suggestedRooms={suggestedRooms}
+              suggestedRooms={suggestedRoomsWithSignals}
+              activeRooms={activeRooms}
               onStartFirstMessage={handleStartFirstMessage}
               onJoinGlobalLobby={handleJoinGlobalLobby}
               onJoinSuggestedRoom={handleJoinSuggestedRoom}

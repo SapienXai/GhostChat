@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import {
+  ActivityIcon,
   ArrowRightIcon,
   CompassIcon,
   LandmarkIcon,
@@ -11,10 +12,12 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils'
-import type { SeedDomain } from './suggested-rooms'
+import type { ActiveRoom } from './active-rooms'
+import type { SuggestedRoomWithSignal } from './suggested-room-signals'
 
 interface GhostTownCtaPanelProps {
-  suggestedRooms: SeedDomain[]
+  suggestedRooms: SuggestedRoomWithSignal[]
+  activeRooms: ActiveRoom[]
   onStartFirstMessage: () => void
   onJoinGlobalLobby: () => void
   onJoinSuggestedRoom: (hostname: string) => void
@@ -22,11 +25,20 @@ interface GhostTownCtaPanelProps {
 
 const GhostTownCtaPanel: FC<GhostTownCtaPanelProps> = ({
   suggestedRooms,
+  activeRooms,
   onStartFirstMessage,
   onJoinGlobalLobby,
   onJoinSuggestedRoom
 }) => {
   const topRooms = suggestedRooms.slice(0, 3)
+  const topActiveRooms = activeRooms.slice(0, 5)
+  const getSignalToneClass = (tone: SuggestedRoomWithSignal['signal']['tone'] | ActiveRoom['signal']['tone']) =>
+    ({
+      hot: 'text-rose-700 dark:text-rose-300',
+      info: 'text-sky-700 dark:text-sky-300',
+      alert: 'text-red-700 dark:text-red-300',
+      neutral: 'text-slate-600 dark:text-slate-300'
+    })[tone]
 
   return (
     <>
@@ -70,6 +82,49 @@ const GhostTownCtaPanel: FC<GhostTownCtaPanelProps> = ({
         </div>
       </div>
 
+      <div className="mx-2 mt-2">
+        <div className="w-full rounded-xl border border-slate-300/70 bg-slate-50/90 p-3 shadow-sm backdrop-blur-md dark:border-slate-600/60 dark:bg-slate-800/70">
+          <div className="mb-2 flex items-center gap-1 text-[10px] font-semibold tracking-[0.04em] text-slate-500 uppercase dark:text-slate-300">
+            <ActivityIcon size={12} className="motion-safe:animate-[pulse_3.4s_ease-in-out_infinite]" />
+            <span>Active Rooms</span>
+          </div>
+          {topActiveRooms.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2">
+              {topActiveRooms.map((room) => (
+                <button
+                  key={room.origin}
+                  type="button"
+                  onClick={() => onJoinSuggestedRoom(room.hostname)}
+                  className={cn(
+                    'group min-w-0 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-left text-xs text-emerald-950 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md active:translate-y-0 active:scale-[0.98] dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-100 dark:hover:bg-emerald-900/30'
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                      <ActivityIcon size={10} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">{room.hostname}</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-2 inline-flex shrink-0 rounded-md border-emerald-300 bg-emerald-100 px-1.5 py-0 text-[9px] text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100"
+                    >
+                      {room.activeUsers} online
+                    </Badge>
+                  </span>
+                  <span className={cn('mt-1 block text-[10px] leading-tight', getSignalToneClass(room.signal.tone))}>
+                    {room.signal.text}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-slate-200/80 bg-white/70 px-2.5 py-2 text-[11px] text-slate-600 dark:border-slate-700/80 dark:bg-slate-900/45 dark:text-slate-300">
+              Active rooms will appear when other GhostChat users are connected.
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="mx-2 mt-2 mb-1">
         <div className="w-full rounded-xl border border-slate-300/70 bg-slate-50/90 p-3 shadow-sm backdrop-blur-md dark:border-slate-600/60 dark:bg-slate-800/70">
           <div className="mb-2 flex items-center gap-1 text-[10px] font-semibold tracking-[0.04em] text-slate-500 uppercase dark:text-slate-300">
@@ -103,6 +158,9 @@ const GhostTownCtaPanel: FC<GhostTownCtaPanelProps> = ({
                   >
                     {room.category || 'web3'}
                   </Badge>
+                </span>
+                <span className={cn('mt-1 block text-[10px] leading-tight', getSignalToneClass(room.signal.tone))}>
+                  {room.signal.text}
                 </span>
               </button>
             ))}

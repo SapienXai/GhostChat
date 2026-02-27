@@ -63,10 +63,24 @@ const AvatarSelect = ({
           className
         )}
       >
-        <AvatarImage src={value} className="size-full" alt="avatar" />
+        <AvatarImage
+          src={value}
+          className={cn('size-full transition-all duration-200', value && !disabled && 'group-hover:blur-[1.5px]')}
+          alt="avatar"
+        />
         <AvatarFallback>
           <ImagePlusIcon size={30} className="text-slate-400 group-hover:text-slate-500" />
         </AvatarFallback>
+        {value && (
+          <div
+            className={cn(
+              'pointer-events-none absolute inset-0 grid place-items-center bg-black/20 opacity-0 transition-opacity duration-200',
+              !disabled && 'group-hover:opacity-100'
+            )}
+          >
+            <ImagePlusIcon size={30} className="text-white drop-shadow-sm" />
+          </div>
+        )}
       </Avatar>
       <input
         ref={ref}

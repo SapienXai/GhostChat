@@ -292,8 +292,6 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
         <MessageList>
           {ENABLE_GHOST_TOWN_CTA && isEmptyRoom && (
             <GhostTownCtaPanel
-              messageCount={messageCount}
-              humansCount={humansCount}
               suggestedRooms={suggestedRooms}
               onStartFirstMessage={handleStartFirstMessage}
               onJoinGlobalLobby={handleJoinGlobalLobby}

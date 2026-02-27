@@ -193,6 +193,7 @@ const checkMessageFormat = (message: v.InferInput<typeof RoomMessageSchema>) =>
   v.safeParse(RoomMessageSchema, message).success
 
 const PROMPT_DEDUP_WINDOW_MS = 45_000
+const PRESENCE_PROMPT_COOLDOWN_MS = 30_000
 
 const ChatRoomDomain = Remesh.domain({
   name: 'ChatRoomDomain',
@@ -305,6 +306,11 @@ const ChatRoomDomain = Remesh.domain({
       }
     })
 
+    const PresencePromptCooldownState = domain.state<Record<string, number>>({
+      name: 'Room.PresencePromptCooldownState',
+      default: {}
+    })
+
     const SelfUserQuery = domain.query({
       name: 'Room.SelfUserQuery',
       impl: ({ get }) => {
@@ -358,12 +364,28 @@ const ChatRoomDomain = Remesh.domain({
       return !recentDuplicate
     }
 
+    const canPassPresencePromptCooldown = (get: any, userId: string, localRoomId: string) => {
+      const now = Date.now()
+      const key = `${localRoomId}:${userId}`
+      const cooldownMap = get(PresencePromptCooldownState()) as Record<string, number>
+      const lastPromptAt = cooldownMap[key] ?? 0
+      return now - lastPromptAt >= PRESENCE_PROMPT_COOLDOWN_MS
+    }
+
     const JoinIsFinishedQuery = JoinStatusModule.query.IsFinishedQuery
 
     const SetConnectionStateCommand = domain.command({
       name: 'Room.SetConnectionStateCommand',
       impl: (_, state: ChatConnectionState) => {
         return [ConnectionStateState().new(state)]
+      }
+    })
+
+    const MarkPresencePromptCommand = domain.command({
+      name: 'Room.MarkPresencePromptCommand',
+      impl: ({ get }, payload: { userId: string; localRoomId: string }) => {
+        const key = `${payload.localRoomId}:${payload.userId}`
+        return [PresencePromptCooldownState().new({ ...get(PresencePromptCooldownState()), [key]: Date.now() })]
       }
     })
 
@@ -376,6 +398,9 @@ const ChatRoomDomain = Remesh.domain({
         const userAvatar = userInfo?.avatar ?? ''
         const promptBody = `"${username}" joined the chat`
         const localRoomId = get(ActiveLocalRoomIdQuery())
+        const shouldCreateJoinPrompt =
+          canCreatePromptMessage(get, userId, promptBody, localRoomId) &&
+          canPassPresencePromptCooldown(get, userId, localRoomId)
         return [
           RoomScopeState().new('local'),
           ReplyTargetState().new(null),
@@ -383,7 +408,7 @@ const ChatRoomDomain = Remesh.domain({
             type: 'create',
             user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
           }),
-          canCreatePromptMessage(get, userId, promptBody, localRoomId)
+          shouldCreateJoinPrompt
             ? messageListDomain.command.CreateItemCommand({
                 id: nanoid(),
                 userId,
@@ -396,6 +421,7 @@ const ChatRoomDomain = Remesh.domain({
                 localRoomId
               })
             : null,
+          shouldCreateJoinPrompt ? MarkPresencePromptCommand({ userId, localRoomId }) : null,
           SetConnectionStateCommand('connecting'),
           JoinRoomEvent(chatRoomExtern.roomId),
           null
@@ -417,10 +443,13 @@ const ChatRoomDomain = Remesh.domain({
         const userAvatar = userInfo?.avatar ?? ''
         const promptBody = `"${username}" left the chat`
         const localRoomId = get(ActiveLocalRoomIdQuery())
+        const shouldCreateLeavePrompt =
+          canCreatePromptMessage(get, userId, promptBody, localRoomId) &&
+          canPassPresencePromptCooldown(get, userId, localRoomId)
         return [
           RoomScopeState().new('local'),
           ReplyTargetState().new(null),
-          canCreatePromptMessage(get, userId, promptBody, localRoomId)
+          shouldCreateLeavePrompt
             ? messageListDomain.command.CreateItemCommand({
                 id: nanoid(),
                 userId,
@@ -433,6 +462,7 @@ const ChatRoomDomain = Remesh.domain({
                 localRoomId
               })
             : null,
+          shouldCreateLeavePrompt ? MarkPresencePromptCommand({ userId, localRoomId }) : null,
           UpdateUserListCommand({
             type: 'delete',
             user: { peerId: chatRoomExtern.peerId, joinTime: Date.now(), userId, username, userAvatar }
@@ -925,13 +955,17 @@ const ChatRoomDomain = Remesh.domain({
                   const existUser = get(UserListQuery()).find((user) => user.userId === message.userId)
                   const isNewJoinUser = !existUser && message.joinTime > selfUser.joinTime
                   const promptBody = `"${message.username}" joined the chat`
+                  const shouldCreateJoinPrompt =
+                    isNewJoinUser &&
+                    canCreatePromptMessage(get, message.userId, promptBody, localRoomId) &&
+                    canPassPresencePromptCooldown(get, message.userId, localRoomId)
 
                   const lastMessageTime = get(LastMessageTimeQuery())
                   const needSyncHistory = lastMessageTime > message.lastMessageTime
 
                   return of(
                     UpdateUserListCommand({ type: 'create', user: message }),
-                    isNewJoinUser && canCreatePromptMessage(get, message.userId, promptBody, localRoomId)
+                    shouldCreateJoinPrompt
                       ? messageListDomain.command.CreateItemCommand({
                           ...message,
                           id: nanoid(),
@@ -941,6 +975,7 @@ const ChatRoomDomain = Remesh.domain({
                           localRoomId
                         })
                       : null,
+                    shouldCreateJoinPrompt ? MarkPresencePromptCommand({ userId: message.userId, localRoomId }) : null,
                     needSyncHistory
                       ? SendSyncHistoryMessageCommand({
                           peerId: message.peerId,
@@ -1047,9 +1082,13 @@ const ChatRoomDomain = Remesh.domain({
             if (existUser) {
               const promptBody = `"${existUser.username}" left the chat`
               const localRoomId = get(ActiveLocalRoomIdQuery())
+              const shouldCreateLeavePrompt =
+                existUser.peerIds.length === 1 &&
+                canCreatePromptMessage(get, existUser.userId, promptBody, localRoomId) &&
+                canPassPresencePromptCooldown(get, existUser.userId, localRoomId)
               return [
                 UpdateUserListCommand({ type: 'delete', user: { ...existUser, peerId } }),
-                existUser.peerIds.length === 1 && canCreatePromptMessage(get, existUser.userId, promptBody, localRoomId)
+                shouldCreateLeavePrompt
                   ? messageListDomain.command.CreateItemCommand({
                       ...existUser,
                       id: nanoid(),
@@ -1060,6 +1099,7 @@ const ChatRoomDomain = Remesh.domain({
                       localRoomId
                     })
                   : null,
+                shouldCreateLeavePrompt ? MarkPresencePromptCommand({ userId: existUser.userId, localRoomId }) : null,
                 OnLeaveRoomEvent(peerId)
               ]
             } else {

@@ -1,4 +1,4 @@
-import { useState, useMemo, type FC } from 'react'
+import { useState, useMemo, useEffect, type FC } from 'react'
 import { Globe2Icon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
@@ -15,6 +15,14 @@ import Link from '@/components/link'
 import NumberFlow from '@number-flow/react'
 import SocialLinks from './social-links'
 import { detectWeb3Context, getChainIcon, getPlatformIcon } from '@/utils/detectWeb3'
+import {
+  createNextSimulatedPresenceState,
+  createSimulatedPresenceState,
+  EMPTY_SIMULATED_PRESENCE_STATE,
+  ENABLE_SIMULATED_PRESENCE,
+  getRandomPresenceRefreshMs,
+  type SimulatedPresenceCharacter
+} from './simulated-presence'
 
 const Header: FC = () => {
   const siteInfo = getSiteInfo()
@@ -27,10 +35,37 @@ const Header: FC = () => {
   const connectionState = useRemeshQuery(chatRoomDomain.query.ConnectionStateQuery())
   const roomScope = useRemeshQuery(chatRoomDomain.query.RoomScopeQuery())
   const isGlobalScope = roomScope === 'global'
-  const localOnlineCount = chatUserList.length
-  const globalOnlineCount = virtualUserList.length
-  const displayOnlineCount = isGlobalScope ? globalOnlineCount : localOnlineCount
+  const localHumanOnlineCount = chatUserList.length
+  const globalHumanOnlineCount = virtualUserList.length
+  const displayHumanOnlineCount = isGlobalScope ? globalHumanOnlineCount : localHumanOnlineCount
   const displayUserList = isGlobalScope ? virtualUserList : chatUserList
+  const [simulatedPresence, setSimulatedPresence] = useState(() =>
+    ENABLE_SIMULATED_PRESENCE ? createSimulatedPresenceState() : EMPTY_SIMULATED_PRESENCE_STATE
+  )
+  const simulatedOnline = isGlobalScope ? simulatedPresence.global : simulatedPresence.local
+  const botsOnline = simulatedOnline.botsOnline
+  const aiOnline = simulatedOnline.aiOnline
+  const displayOnlineCount = displayHumanOnlineCount + botsOnline.length + aiOnline.length
+
+  useEffect(() => {
+    if (!ENABLE_SIMULATED_PRESENCE) return
+    let refreshTimer: number | undefined
+
+    const scheduleRefresh = () => {
+      refreshTimer = window.setTimeout(() => {
+        setSimulatedPresence((previous) => createNextSimulatedPresenceState(previous))
+        scheduleRefresh()
+      }, getRandomPresenceRefreshMs())
+    }
+
+    scheduleRefresh()
+
+    return () => {
+      if (typeof refreshTimer === 'number') {
+        window.clearTimeout(refreshTimer)
+      }
+    }
+  }, [])
 
   const virtualOnlineGroup = virtualUserList
     .flatMap((user) => user.fromInfos.map((from) => ({ from, user })))
@@ -82,7 +117,7 @@ const Header: FC = () => {
           : 'bg-slate-400'
   const connectionLabel =
     connectionState === 'connected'
-      ? displayOnlineCount > 1
+      ? displayHumanOnlineCount > 1
         ? 'P2P Ready'
         : 'P2P Waiting Peer'
       : connectionState === 'connecting'
@@ -90,6 +125,47 @@ const Header: FC = () => {
         : connectionState === 'error'
           ? 'P2P Error'
           : 'P2P Offline'
+  const renderSimulatedGroup = (label: string, characters: SimulatedPresenceCharacter[]) => (
+    <div className="rounded-md border border-black/5 bg-white/35 dark:border-white/10 dark:bg-slate-900/35">
+      <div className="flex items-center justify-between px-2 py-1 text-[9px] font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-200">
+        <span>{label}</span>
+        <span className="tabular-nums">{characters.length}</span>
+      </div>
+      <div className="space-y-0.5 px-1 pb-1">
+        {characters.map((character) => (
+          <div key={character.id} className="flex items-center gap-x-2 rounded-md px-1 py-1">
+            <Avatar className="size-4 shrink-0">
+              <AvatarImage className="size-full" src={character.avatar} alt={`${character.name} avatar`} />
+              <AvatarFallback>{character.name.at(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 truncate text-[10px] text-slate-500 dark:text-slate-50">{character.name}</div>
+            <span
+              className={cn(
+                'shrink-0 text-[8px] uppercase tracking-[0.04em]',
+                character.status === 'online'
+                  ? 'text-emerald-500 dark:text-emerald-400'
+                  : character.status === 'crawling'
+                    ? 'text-sky-500 dark:text-sky-400'
+                    : character.status === 'analyzing'
+                      ? 'text-violet-500 dark:text-violet-400'
+                      : character.status === 'indexing'
+                        ? 'text-indigo-500 dark:text-indigo-400'
+                        : character.status === 'syncing'
+                          ? 'text-cyan-500 dark:text-cyan-400'
+                          : character.status === 'rate-limited'
+                            ? 'text-amber-500 dark:text-amber-400'
+                            : character.status === 'error'
+                              ? 'text-rose-500 dark:text-rose-400'
+                              : 'text-slate-500 dark:text-slate-400'
+              )}
+            >
+              {character.status}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <div className="relative z-10 mx-3 mt-3 grid h-16 grid-flow-col grid-cols-[auto_1fr] items-center justify-between rounded-2xl border border-white/45 bg-white/60 px-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60">
@@ -227,39 +303,57 @@ const Header: FC = () => {
                 </div>
               </Button>
             </HoverCardTrigger>
-            <HoverCardContent className="w-36 rounded-lg border border-white/45 bg-white/85 p-0 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
-              <ScrollArea type="scroll" className="max-h-[204px] min-h-9 p-1" ref={setChatUserListScrollParentRef}>
-                <Virtuoso
-                  data={displayUserList}
-                  defaultItemHeight={28}
-                  customScrollParent={chatUserListScrollParentRef!}
-                  itemContent={(_index, user) => {
-                    const isAway = !isGlobalScope && awayUsers.some((awayUser) => awayUser.userId === user.userId)
-                    return (
-                      <div className={cn('flex  items-center gap-x-2 rounded-md px-2 py-1.5 outline-none')}>
-                        <div className="relative">
-                          <Avatar className="size-4 shrink-0">
-                            <AvatarImage className="size-full" src={user.userAvatar} alt="avatar" />
-                            <AvatarFallback>{user.username.at(0)}</AvatarFallback>
-                          </Avatar>
-                          {isAway && (
-                            <div className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-white bg-gray-400 dark:border-slate-900" />
-                          )}
-                        </div>
-                        <div
-                          className={cn(
-                            'flex-1 truncate text-xs',
-                            isAway ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-50'
-                          )}
-                        >
-                          {user.username}
-                          {isAway && <span className="ml-1 text-xs">(Away)</span>}
-                        </div>
-                      </div>
-                    )
-                  }}
-                ></Virtuoso>
-              </ScrollArea>
+            <HoverCardContent className="w-56 rounded-lg border border-white/45 bg-white/85 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
+              <div className="space-y-1">
+                <div className="rounded-md border border-black/5 bg-white/35 dark:border-white/10 dark:bg-slate-900/35">
+                  <div className="flex items-center justify-between px-2 py-1 text-[9px] font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-200">
+                    <span>Humans</span>
+                    {import.meta.env.FIREFOX ? (
+                      <span className="tabular-nums">{Math.min(displayHumanOnlineCount, 99)}</span>
+                    ) : (
+                      <NumberFlow className="tabular-nums" willChange value={Math.min(displayHumanOnlineCount, 99)} />
+                    )}
+                  </div>
+                  <ScrollArea type="scroll" className="max-h-[180px] min-h-9 p-1" ref={setChatUserListScrollParentRef}>
+                    <Virtuoso
+                      data={displayUserList}
+                      defaultItemHeight={28}
+                      customScrollParent={chatUserListScrollParentRef!}
+                      itemContent={(_index, user) => {
+                        const isAway = !isGlobalScope && awayUsers.some((awayUser) => awayUser.userId === user.userId)
+                        return (
+                          <div className={cn('flex items-center gap-x-2 rounded-md px-2 py-1.5 outline-none')}>
+                            <div className="relative">
+                              <Avatar className="size-4 shrink-0">
+                                <AvatarImage className="size-full" src={user.userAvatar} alt="avatar" />
+                                <AvatarFallback>{user.username.at(0)}</AvatarFallback>
+                              </Avatar>
+                              {isAway && (
+                                <div className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-white bg-gray-400 dark:border-slate-900" />
+                              )}
+                            </div>
+                            <div
+                              className={cn(
+                                'flex-1 truncate text-[10px]',
+                                isAway ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-50'
+                              )}
+                            >
+                              {user.username}
+                              {isAway && <span className="ml-1 text-[10px]">(Away)</span>}
+                            </div>
+                          </div>
+                        )
+                      }}
+                    ></Virtuoso>
+                  </ScrollArea>
+                </div>
+                {ENABLE_SIMULATED_PRESENCE && (
+                  <>
+                    {renderSimulatedGroup('Bots', botsOnline)}
+                    {renderSimulatedGroup('AI', aiOnline)}
+                  </>
+                )}
+              </div>
             </HoverCardContent>
           </HoverCard>
           <span className="inline-flex items-center gap-x-1 text-[8px] leading-none text-slate-500 dark:text-slate-100">

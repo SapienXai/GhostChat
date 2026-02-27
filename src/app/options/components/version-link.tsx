@@ -28,8 +28,36 @@ type RemoteReleaseInfo = {
   version?: string
   downloadUrl?: string
   notesUrl?: string
+  downloads?: {
+    chrome?: string
+    edge?: string
+    firefox?: string
+  }
+}
+type GitHubLatestRelease = {
+  tag_name?: string
+  html_url?: string
+  assets?: Array<{
+    browser_download_url?: string
+    name?: string
+  }>
 }
 type UpdateState = 'idle' | 'checking' | 'upToDate' | 'updateAvailable' | 'error'
+
+const getBrowserKey = (): 'chrome' | 'edge' | 'firefox' => {
+  if (import.meta.env.FIREFOX) return 'firefox'
+  if (typeof navigator !== 'undefined' && navigator.userAgent.includes('Edg/')) return 'edge'
+  return 'chrome'
+}
+
+const getPlatformDownloadUrl = (data: RemoteReleaseInfo): string | null => {
+  const browserKey = getBrowserKey()
+  const browserDownloadUrl = data.downloads?.[browserKey]
+  if (browserDownloadUrl) return browserDownloadUrl
+  if (data.downloadUrl) return data.downloadUrl
+  if (data.notesUrl) return data.notesUrl
+  return null
+}
 
 const VersionLink: FC = () => {
   const installedVersion = useMemo(() => {
@@ -49,7 +77,7 @@ const VersionLink: FC = () => {
     setUpdateState('checking')
 
     let candidateVersion: string | null = null
-    let candidateUrl = 'https://sapienx.app/ghostchat/'
+    let candidateUrl = 'https://github.com/SapienXai/GhostChat/releases'
     let checkedAnySource = false
     let remoteChecked = false
 
@@ -86,8 +114,8 @@ const VersionLink: FC = () => {
 
     try {
       const remoteUrls = [
-        'https://sapienx.app/ghostchat/extensions/latest.json',
-        'https://sapienx.app/ghostchat/latest.json'
+        'https://raw.githubusercontent.com/SapienXai/GhostChat/master/public/update.json',
+        'https://raw.githubusercontent.com/SapienXai/GhostChat/main/public/update.json'
       ]
 
       for (const remoteUrl of remoteUrls) {
@@ -98,11 +126,8 @@ const VersionLink: FC = () => {
         checkedAnySource = true
 
         const data = (await response.json()) as RemoteReleaseInfo
-        if (data.downloadUrl) {
-          candidateUrl = data.downloadUrl
-        } else if (data.notesUrl) {
-          candidateUrl = data.notesUrl
-        }
+        const platformUrl = getPlatformDownloadUrl(data)
+        if (platformUrl) candidateUrl = platformUrl
 
         if (data.version && compareSemver(installedVersion, data.version) < 0) {
           if (!candidateVersion || compareSemver(candidateVersion, data.version) < 0) {
@@ -111,6 +136,30 @@ const VersionLink: FC = () => {
         }
 
         break
+      }
+
+      if (!remoteChecked) {
+        const latestReleaseResponse = await fetch('https://api.github.com/repos/SapienXai/GhostChat/releases/latest', {
+          cache: 'no-store'
+        })
+        if (latestReleaseResponse.ok) {
+          checkedAnySource = true
+          remoteChecked = true
+          const release = (await latestReleaseResponse.json()) as GitHubLatestRelease
+          const tagVersion = (release.tag_name ?? '').replace(/^v/i, '')
+
+          const browserKey = getBrowserKey()
+          const assetNamePart = `-${browserKey}.zip`
+          const preferredAssetUrl = release.assets?.find((asset) =>
+            asset.name?.includes(assetNamePart)
+          )?.browser_download_url
+          const fallbackAssetUrl = release.assets?.find((asset) => asset.name?.endsWith('.zip'))?.browser_download_url
+          candidateUrl = preferredAssetUrl || fallbackAssetUrl || release.html_url || candidateUrl
+
+          if (tagVersion && compareSemver(installedVersion, tagVersion) < 0) {
+            candidateVersion = tagVersion
+          }
+        }
       }
     } catch {
       // Ignore network errors and use available data.
@@ -134,7 +183,7 @@ const VersionLink: FC = () => {
     }
 
     setAvailableVersion(null)
-    setUpdateUrl('https://sapienx.app/ghostchat/')
+    setUpdateUrl('https://github.com/SapienXai/GhostChat/releases')
     setUpdateState('upToDate')
   }
 

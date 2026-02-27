@@ -5,7 +5,27 @@ export interface SeedDomain {
   category: string
   project?: string
   chain?: string | null
+  chains?: string[]
   tvlUsd?: number
+  volume24hUsd?: number
+  fees24hUsd?: number
+  activeWallets24h?: number
+  transactions24h?: number
+  tokenSymbol?: string
+  tokenPriceUsd?: number
+  tokenPriceChange24hPct?: number
+  securityScore?: number
+  audited?: boolean
+  githubStars?: number
+  commits30d?: number
+  contributors30d?: number
+  governanceProposals30d?: number
+  docsUrl?: string
+  githubUrl?: string
+  tokenPageUrl?: string
+  statusPageUrl?: string
+  launchDate?: string
+  updatedAt?: string
   sourceRank?: number
   source?: string
   trafficTier?: 'high' | 'medium' | 'emerging'

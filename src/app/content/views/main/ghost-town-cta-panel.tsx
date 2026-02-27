@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils'
 import type { ActiveRoom } from './active-rooms'
+import { buildSuggestedRoomProjectSnapshot } from './suggested-room-project-snapshot'
 import type { SuggestedRoomWithSignal } from './suggested-room-signals'
 
 interface GhostTownCtaPanelProps {
@@ -132,38 +133,58 @@ const GhostTownCtaPanel: FC<GhostTownCtaPanelProps> = ({
             <span>Suggested Rooms</span>
           </div>
           <div className="grid grid-cols-1 gap-2">
-            {topRooms.map((room) => (
-              <button
-                key={room.hostname}
-                type="button"
-                onClick={() => onJoinSuggestedRoom(room.hostname)}
-                className={cn(
-                  'group min-w-0 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-left text-xs text-amber-950 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-md active:translate-y-0 active:scale-[0.98] dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-100 dark:hover:bg-amber-900/30'
-                )}
-              >
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-violet-500/15 text-violet-600 motion-safe:animate-[pulse_3.6s_ease-in-out_infinite] dark:text-violet-300">
-                    {room.category?.includes('defi') ? (
-                      <LandmarkIcon size={10} />
-                    ) : room.category?.includes('wallet') ? (
-                      <WalletIcon size={10} />
-                    ) : (
-                      <SparklesIcon size={10} />
-                    )}
+            {topRooms.map((room) => {
+              const snapshot = buildSuggestedRoomProjectSnapshot(room)
+
+              return (
+                <button
+                  key={room.hostname}
+                  type="button"
+                  onClick={() => onJoinSuggestedRoom(room.hostname)}
+                  className={cn(
+                    'group min-w-0 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-left text-xs text-amber-950 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-md active:translate-y-0 active:scale-[0.98] dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-100 dark:hover:bg-amber-900/30'
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-violet-500/15 text-violet-600 motion-safe:animate-[pulse_3.6s_ease-in-out_infinite] dark:text-violet-300">
+                      {room.category?.includes('defi') ? (
+                        <LandmarkIcon size={10} />
+                      ) : room.category?.includes('wallet') ? (
+                        <WalletIcon size={10} />
+                      ) : (
+                        <SparklesIcon size={10} />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">{room.hostname}</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-2 inline-flex max-w-[45%] shrink-0 truncate rounded-md border-amber-300 bg-amber-100 px-1.5 py-0 text-[9px] capitalize text-amber-900 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-100"
+                    >
+                      {room.category || 'web3'}
+                    </Badge>
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[11px] font-semibold">{room.hostname}</span>
-                  <Badge
-                    variant="outline"
-                    className="ml-2 inline-flex max-w-[45%] shrink-0 truncate rounded-md border-amber-300 bg-amber-100 px-1.5 py-0 text-[9px] capitalize text-amber-900 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-100"
-                  >
-                    {room.category || 'web3'}
-                  </Badge>
-                </span>
-                <span className={cn('mt-1 block text-[10px] leading-tight', getSignalToneClass(room.signal.tone))}>
-                  {room.signal.text}
-                </span>
-              </button>
-            ))}
+                  <span className="mt-1 block truncate text-[10px] font-medium text-amber-800 dark:text-amber-100/90">
+                    {snapshot.projectName}
+                  </span>
+                  <span className="mt-1 flex min-w-0 flex-wrap gap-1">
+                    {snapshot.badges.map((badgeLabel) => (
+                      <span
+                        key={`${room.hostname}-${badgeLabel}`}
+                        className="inline-flex max-w-full truncate rounded-md border border-amber-300/80 bg-amber-100/80 px-1.5 py-0.5 text-[9px] leading-none text-amber-900 dark:border-amber-800/70 dark:bg-amber-900/35 dark:text-amber-100"
+                      >
+                        {badgeLabel}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="mt-1 block text-[9px] leading-tight text-amber-800/80 dark:text-amber-200/75">
+                    {snapshot.sourceLabel}
+                  </span>
+                  <span className={cn('mt-1 block text-[10px] leading-tight', getSignalToneClass(room.signal.tone))}>
+                    {room.signal.text}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>

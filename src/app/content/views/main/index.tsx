@@ -361,11 +361,7 @@ const Main: FC<MainProps> = ({ activeTab, onTabChange, leaderboardEnabled = true
       ) : (
         <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]">
           <div className="min-h-0 px-3 pt-2">
-            <Leaderboard
-              virtualUsers={virtualUserList}
-              siteStats={siteStats}
-              mode={activeTab === 'trending' ? 'trending' : 'new-rising'}
-            />
+            <Leaderboard siteStats={siteStats} mode={activeTab === 'trending' ? 'trending' : 'new-rising'} />
           </div>
           <div className="px-3 pb-3 pt-2">
             <LeaderboardFooter />
